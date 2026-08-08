@@ -144,7 +144,8 @@
       <p>Two players. One screen. Catch matching orbs, dodge the glitches.</p>
       <p><b>P1</b> moves with WASD · <b>P2</b> moves with Arrows.</p>
       <p>Collect orbs of your color. Shared score wins.</p>
-      <button id="start">INSERT COIN / START</button>
+      <button id="start">INSERT COIN / CO-OP START</button>
+      <button id="solo">SOLO (AI PARTNER)</button>
     </div>
   </div>
 
@@ -190,11 +191,24 @@
     let lastTick = 0;
     let spawnTimer = 0;
     let glitchTimer = 0;
+    let soloMode = false;
+    const moveCooldown = 0.12;
+    let p1MoveTimer = 0;
+    let p2MoveTimer = 0;
 
-    window.addEventListener('keydown', e => { keys[e.key] = true; });
+    const soloBtn = document.getElementById('solo');
     window.addEventListener('keyup', e => { keys[e.key] = false; });
 
     startBtn.addEventListener('click', () => {
+      soloMode = false;
+      overlay.classList.add('hidden');
+      resetGame();
+      running = true;
+      requestAnimationFrame(loop);
+    });
+
+    soloBtn.addEventListener('click', () => {
+      soloMode = true;
       overlay.classList.add('hidden');
       resetGame();
       running = true;
@@ -210,6 +224,8 @@
       timeLeft = 60;
       spawnTimer = 0;
       glitchTimer = 0;
+      p1MoveTimer = 0;
+      p2MoveTimer = 0;
       updateHud();
       for (let i = 0; i < 6; i++) spawnOrb();
       for (let i = 0; i < 4; i++) spawnGlitch();
@@ -251,18 +267,81 @@
       p.x = nx; p.y = ny;
     }
 
-    function update(dt) {
-      if (keys['w'] || keys['W']) movePlayer(P1, 0, -1, P2);
-      if (keys['s'] || keys['S']) movePlayer(P1, 0, 1, P2);
-      if (keys['a'] || keys['A']) movePlayer(P1, -1, 0, P2);
-      if (keys['d'] || keys['D']) movePlayer(P1, 1, 0, P2);
-      if (keys['ArrowUp']) movePlayer(P2, 0, -1, P1);
-      if (keys['ArrowDown']) movePlayer(P2, 0, 1, P1);
-      if (keys['ArrowLeft']) movePlayer(P2, -1, 0, P1);
-      if (keys['ArrowRight']) movePlayer(P2, 1, 0, P1);
+    function inputDirection(p) {
+      let dx = 0, dy = 0;
+      if (p === P1) {
+        if (keys['w'] || keys['W']) dy = -1;
+        else if (keys['s'] || keys['S']) dy = 1;
+        else if (keys['a'] || keys['A']) dx = -1;
+        else if (keys['d'] || keys['D']) dx = 1;
+      } else if (p === P2 && !soloMode) {
+        if (keys['ArrowUp']) dy = -1;
+        else if (keys['ArrowDown']) dy = 1;
+        else if (keys['ArrowLeft']) dx = -1;
+        else if (keys['ArrowRight']) dx = 1;
+      }
+      return { dx, dy };
+    }
 
-      // Only allow one step per key press-ish by clearing arrows after move
-      // but continuous movement feels better for arcade; keep it.
+    function aiStep(p, other) {
+      // Find nearest orb matching p's color, otherwise any orb.
+      let target = null;
+      let best = Infinity;
+      const preferred = orbs.filter(o => o.color === p.color);
+      const pool = preferred.length ? preferred : orbs;
+      for (const o of pool) {
+        const d = dist(p.x, p.y, o.x, o.y);
+        if (d < best) { best = d; target = o; }
+      }
+      let dx = 0, dy = 0;
+      if (target) {
+        if (Math.abs(target.x - p.x) >= Math.abs(target.y - p.y)) dx = Math.sign(target.x - p.x);
+        else dy = Math.sign(target.y - p.y);
+      } else {
+        // Wander toward center when idle
+        dx = Math.sign(Math.floor(COLS / 2) - p.x);
+        dy = Math.sign(Math.floor(ROWS / 2) - p.y);
+        if (dx !== 0 && dy !== 0 && Math.random() < 0.5) dy = 0;
+        if (dx === 0 && dy === 0) { dx = Math.random() < 0.5 ? 1 : -1; }
+      }
+      // Avoid glitches directly ahead if possible
+      const nx = p.x + dx, ny = p.y + dy;
+      const danger = glitches.some(g => Math.round(g.x) === nx && Math.round(g.y) === ny);
+      if (danger) {
+        const alternatives = [{dx: dy, dy: dx}, {dx: -dy, dy: -dx}, {dx: -dx, dy: -dy}, {dx: 0, dy: 0}];
+        for (const alt of alternatives) {
+          if (!glitches.some(g => Math.round(g.x) === p.x + alt.dx && Math.round(g.y) === p.y + alt.dy)) {
+            dx = alt.dx; dy = alt.dy; break;
+          }
+        }
+      }
+      movePlayer(p, dx, dy, other);
+    }
+
+    function update(dt) {
+      p1MoveTimer -= dt;
+      p2MoveTimer -= dt;
+
+      if (p1MoveTimer <= 0) {
+        const { dx, dy } = inputDirection(P1);
+        if (dx !== 0 || dy !== 0) {
+          movePlayer(P1, dx, dy, P2);
+          p1MoveTimer = moveCooldown;
+        }
+      }
+
+      if (p2MoveTimer <= 0) {
+        if (soloMode) {
+          aiStep(P2, P1);
+          p2MoveTimer = moveCooldown;
+        } else {
+          const { dx, dy } = inputDirection(P2);
+          if (dx !== 0 || dy !== 0) {
+            movePlayer(P2, dx, dy, P1);
+            p2MoveTimer = moveCooldown;
+          }
+        }
+      }
 
       for (let i = orbs.length - 1; i >= 0; i--) {
         const o = orbs[i];
@@ -394,6 +473,7 @@
       overlay.querySelector('h2').textContent = 'GAME OVER';
       overlay.querySelector('p').innerHTML = `P1: ${P1.score} · P2: ${P2.score}<br>Team total: ${total}`;
       startBtn.textContent = 'PLAY AGAIN';
+      soloBtn.textContent = soloMode ? 'SOLO AGAIN' : 'SOLO (AI PARTNER)';
       overlay.classList.remove('hidden');
     }
 
