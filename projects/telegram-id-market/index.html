@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram ID Market — Buy & Sell Rare Telegram IDs</title>
+  <style>
+    :root {
+      --bg: #0a0b10;
+      --card: #14161f;
+      --text: #f5f6fa;
+      --muted: #a0a4b8;
+      --accent: #2dd4bf;
+      --accent-2: #f472b6;
+      --danger: #f87171;
+      --border: #25283a;
+      --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.55;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    header {
+      padding: 4rem 1rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(45, 212, 191, 0.12);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    h1 { font-size: clamp(2.2rem, 6vw, 4rem); margin: 0 0 1rem; line-height: 1.1; }
+    .subtitle { color: var(--muted); max-width: 640px; margin: 0 auto 1.5rem; font-size: 1.15rem; }
+    .cta { margin-top: 1.5rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: 0.75rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn-primary { background: var(--accent); color: #0a0b10; }
+    .btn-secondary { background: transparent; border-color: var(--border); color: var(--text); margin-left: 0.75rem; }
+    .btn:hover { transform: translateY(-1px); opacity: 0.92; }
+
+    main { max-width: 920px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    section { margin: 3rem 0; }
+    h2 { font-size: 1.5rem; margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .card + .card { margin-top: 1rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .big-number { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin: 0; }
+    .muted { color: var(--muted); }
+
+    .listing {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .listing:last-child { border-bottom: none; }
+    .id-tag { font-weight: 700; font-size: 1.1rem; }
+    .category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border: 1px solid var(--border); padding: 0.2rem 0.5rem; border-radius: 0.35rem; }
+    .price { font-weight: 700; color: var(--accent-2); }
+
+    .fee-box { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+    .fee-box:last-child { border-bottom: none; }
+
+    footer { text-align: center; padding: 2rem 1rem; color: var(--muted); border-top: 1px solid var(--border); font-size: 0.85rem; }
+
+    .warning {
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      color: var(--danger);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 640px) {
+      .listing { grid-template-columns: 1fr; gap: 0.35rem; }
+      .btn-secondary { margin-left: 0; margin-top: 0.75rem; }
+      .cta { display: flex; flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">Built in a night by an AI</div>
+    <h1>Telegram ID Market</h1>
+    <p class="subtitle">Buy, sell, and flex the rarest Telegram usernames, channels, and group handles. Escrowed. Comedy-secured. 1% fee.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="#waitlist">Join Waitlist</a>
+      <a class="btn btn-secondary" href="plan.md">Read Plan</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="card">
+        <p class="big-number">0.5% + 0.5%</p>
+        <p>Buyer pays 0.5%. Seller pays 0.5%. Total 1%. No hidden fees. No gas games.</p>
+      </div>
+      <div class="card">
+        <p class="big-number">TON</p>
+        <p>Built on The Open Network — the same chain Telegram uses. Fast, cheap, and native.</p>
+      </div>
+      <div class="card">
+        <p class="big-number">Escrow</p>
+        <p>Smart contract holds the payment until the username transfer is confirmed. Trust code, not vibes.</p>
+      </div>
+      <div class="card">
+        <p class="big-number">Comedy</p>
+        <p>We verify the memetic value. Short, punny, rare-numbered, and cursed handles get ranked higher.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>🔥 Featured IDs</h2>
+      <div class="card">
+        <div class="listing">
+          <div>
+            <div class="id-tag">@7am</div>
+            <div class="muted">3 letters, premium feel, morning aura.</div>
+          </div>
+          <div class="category">Username</div>
+          <div class="price">320 TON</div>
+        </div>
+        <div class="listing">
+          <div>
+            <div class="id-tag">t.me/okmaybe</div>
+            <div class="muted">Relatable, brandable, perfect for a startup.</div>
+          </div>
+          <div class="category">Channel</div>
+          <div class="price">85 TON</div>
+        </div>
+        <div class="listing">
+          <div>
+            <div class="id-tag">@404nfound</div>
+            <div class="muted">Nerd-cursed. Rare wordplay + HTTP status.</div>
+          </div>
+          <div class="category">Username</div>
+          <div class="price">42 TON</div>
+        </div>
+      </div>
+      <p class="muted">These are demo listings. The marketplace is not yet live.</p>
+    </section>
+
+    <section>
+      <h2>⚡ Token Utility</h2>
+      <div class="card">
+        <p><strong>$IDMK</strong> is the marketplace utility token. It is not a security. It does not promise profit from our efforts. It does three things:</p>
+        <ul>
+          <li><strong>Fee discount:</strong> pay fees in $IDMK → 50% off.</li>
+          <li><strong>Verified seller stake:</strong> lock $IDMK to earn a green checkmark and higher listing rank.</li>
+          <li><strong>Dispute vote:</strong> high-stake holders can vote on escrow disputes (with skin in the game).</li>
+        </ul>
+        <p class="muted">1% of trading fees buy and burn $IDMK. This reduces supply, but it is not a guaranteed value mechanism.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>🛡️ How Escrow Works</h2>
+      <div class="card">
+        <div class="fee-box">
+          <span>1. Seller lists ID</span>
+          <span class="muted">Set price in TON or USDT.</span>
+        </div>
+        <div class="fee-box">
+          <span>2. Buyer commits funds</span>
+          <span class="muted">Smart contract locks payment.</span>
+        </div>
+        <div class="fee-box">
+          <span>3. Telegram transfer</span>
+          <span class="muted">Seller initiates official username transfer.</span>
+        </div>
+        <div class="fee-box">
+          <span>4. Buyer confirms</span>
+          <span class="muted">Contract releases funds, minus 1% fee.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="warning">
+      ⚠️ <strong>Legal note:</strong> We do not sell Telegram accounts. We only facilitate transfers of collectible usernames and channel/group handles that Telegram allows to be reassigned. Users must own the rights they sell. High-value trades may require KYC. This page is a concept, not a live financial service.
+    </section>
+
+    <section id="waitlist">
+      <h2>📬 Join the Waitlist</h2>
+      <div class="card">
+        <p class="muted">We are not collecting emails yet. The next step is building the smart contract escrow on TON testnet. If you want to follow progress, check the <a href="plan.md">product plan</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>A concept by <a href="https://ka.gab44.com">openclaw-builder</a> + Nao · Not yet live · Not financial advice.</p>
+  </footer>
+</body>
+</html>
