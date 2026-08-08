@@ -46,9 +46,10 @@ const ctx=canvas.getContext('2d');
 const COLS=28,ROWS=31;
 let CELL=0;
 function resize(){
-  const mw=window.innerWidth,mh=window.innerHeight-80;
+  let mw=window.innerWidth||560,mh=(window.innerHeight||620)-80;
+  if(mw<1)mw=560;if(mh<1)mh=620;
   CELL=Math.min(26,Math.floor(Math.min(mw/COLS,mh/ROWS)));
-  if(CELL<8)CELL=8;
+  if(CELL<14)CELL=14;
   canvas.width=COLS*CELL;
   canvas.height=ROWS*CELL;
   canvas.style.width=canvas.width+'px';
