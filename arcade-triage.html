@@ -272,20 +272,20 @@
           // Replace first script block with merged cleaned JS, remove the rest
           const first = originalScriptBlocks[0];
           const before = cleanedHtml.slice(0, first.offset);
-          const afterStart = first.offset + `<script${first.attrs}>${first.content}</script>`.length;
+          const afterStart = first.offset + (`<script${first.attrs}>${first.content}</` + 'script>').length;
           let after = cleanedHtml.slice(afterStart);
           // remove remaining script blocks from after
           let removeOffset = 0;
           for (let i = 1; i < originalScriptBlocks.length; i++) {
             const b = originalScriptBlocks[i];
             const relativeOff = b.offset - afterStart;
-            const blockLen = `<script${b.attrs}>${b.content}</script>`.length;
+            const blockLen = (`<script${b.attrs}>` + `${b.content}</` + 'script>').length;
             if (relativeOff >= 0) {
               after = after.slice(0, relativeOff - removeOffset) + '\n<!-- triage removed duplicate script block -->' + after.slice(relativeOff - removeOffset + blockLen);
               removeOffset += blockLen;
             }
           }
-          cleanedHtml = before + `<script${first.attrs}>\n${cleanedJs}\n</script>` + after;
+          cleanedHtml = before + ('<script' + first.attrs + '>\n' + cleanedJs + '\n</' + 'script>') + after;
         }
 
         dlBtn.classList.remove('hidden');
