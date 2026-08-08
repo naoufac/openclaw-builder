@@ -166,6 +166,40 @@
         if (depth !== 0) log('err', `Brace imbalance: ${depth} unclosed opening brace(s)`);
         if (!badLines.length && depth === 0) log('ok', 'Brace balance: OK');
 
+        // Duplicate top-level declarations (common in chunked drafts)
+        const decls = [];
+        const declPatterns = [
+          {type:'const', re:/\bconst\s+([A-Za-z_$][A-Za-z0-9_$]*)/g},
+          {type:'let', re:/\blet\s+([A-Za-z_$][A-Za-z0-9_$]*)/g},
+          {type:'var', re:/\bvar\s+([A-Za-z_$][A-Za-z0-9_$]*)/g},
+          {type:'function', re:/\bfunction\s+([A-Za-z_$][A-Za-z0-9_$]*)/g},
+          {type:'class', re:/\bclass\s+([A-Za-z_$][A-Za-z0-9_$]*)/g}
+        ];
+        lines.forEach((line, idx) => {
+          // Strip strings/comments to avoid false positives
+          let s = line.replace(/'(?:[^'\\]|\\.)*'/g, "'").replace(/"(?:[^"\\]|\\.)*"/g, '"').replace(/`(?:[^`\\]|\\.)*`/g, '`');
+          s = s.replace(/\/\/.*$/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+          declPatterns.forEach(({type, re}) => {
+            let m;
+            while ((m = re.exec(s)) !== null) {
+              decls.push({type, name: m[1], line: idx + 1});
+            }
+          });
+        });
+        const counts = new Map();
+        decls.forEach(d => {
+          if (!counts.has(d.name)) counts.set(d.name, []);
+          counts.get(d.name).push(d);
+        });
+        let dupCount = 0;
+        for (const [name, ds] of counts) {
+          if (ds.length > 1) {
+            dupCount++;
+            log('warn', `Duplicate '${name}' declared ${ds.length} times (${ds.map(d => `${d.type} L${d.line}`).join(', ')})`);
+          }
+        }
+        if (dupCount === 0) log('ok', 'No duplicate top-level declarations detected');
+
         // Common undefined variable patterns
         const defined = new Set();
         const referenced = new Map();
