@@ -91,6 +91,49 @@
       box-shadow: 0 0 14px var(--neon-pink);
     }
     #overlay button:hover { background: #ff477e; }
+
+    #touch-controls {
+      width: 640px;
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      user-select: none;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(3, 56px);
+      gap: 6px;
+    }
+    .dpad button {
+      background: var(--panel);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(5,217,232,0.2);
+    }
+    .dpad button:active {
+      background: rgba(5,217,232,0.25);
+      box-shadow: 0 0 14px var(--neon-cyan);
+    }
+    .dpad[data-player="P1"] button { border-color: var(--neon-pink); color: var(--neon-pink); }
+    .dpad[data-player="P1"] button:active { box-shadow: 0 0 14px var(--neon-pink); background: rgba(255,42,109,0.2); }
+    .dpad[data-player="P2"] button { border-color: var(--neon-cyan); }
+    .dpad[data-player="P2"] button:active { box-shadow: 0 0 14px var(--neon-cyan); }
+
+    @media (hover: hover) and (pointer: fine) {
+      #touch-controls { display: none !important; }
+    }
+    @media (max-width: 700px) {
+      canvas { width: 100vw; height: auto; }
+      #game-wrap, .hud, .help { width: 100%; }
+      #touch-controls { width: 100%; padding: 0 1rem; box-sizing: border-box; }
+    }
     .hud {
       width: 640px;
       display: flex;
@@ -149,6 +192,31 @@
     </div>
   </div>
 
+  <div id="touch-controls" class="hidden">
+    <div class="dpad" data-player="P1">
+      <div></div>
+      <button data-dir="up">▲</button>
+      <div></div>
+      <button data-dir="left">◀</button>
+      <div></div>
+      <button data-dir="right">▶</button>
+      <div></div>
+      <button data-dir="down">▼</button>
+      <div></div>
+    </div>
+    <div class="dpad" data-player="P2">
+      <div></div>
+      <button data-dir="up">▲</button>
+      <div></div>
+      <button data-dir="left">◀</button>
+      <div></div>
+      <button data-dir="right">▶</button>
+      <div></div>
+      <button data-dir="down">▼</button>
+      <div></div>
+    </div>
+  </div>
+
   <div class="help">
     <div>
       <b>P1 (magenta)</b><br>
@@ -197,11 +265,36 @@
     let p2MoveTimer = 0;
 
     const soloBtn = document.getElementById('solo');
+    const touchControls = document.getElementById('touch-controls');
     window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    // Touch controls
+    function bindDpad(player) {
+      const dpad = document.querySelector(`.dpad[data-player="${player}"]`);
+      if (!dpad) return;
+      const map = {
+        P1: { up: 'w', down: 's', left: 'a', right: 'd' },
+        P2: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }
+      };
+      dpad.querySelectorAll('button').forEach(btn => {
+        const dir = btn.dataset.dir;
+        const key = map[player][dir];
+        const set = (v) => keys[key] = v;
+        btn.addEventListener('touchstart', e => { e.preventDefault(); set(true); });
+        btn.addEventListener('touchend', e => { e.preventDefault(); set(false); });
+        btn.addEventListener('mousedown', e => { e.preventDefault(); set(true); });
+        btn.addEventListener('mouseup', e => { e.preventDefault(); set(false); });
+        btn.addEventListener('mouseleave', e => { set(false); });
+      });
+    }
+    bindDpad('P1');
+    bindDpad('P2');
+    document.addEventListener('touchmove', e => { if (e.target.closest('.dpad')) e.preventDefault(); }, { passive: false });
 
     startBtn.addEventListener('click', () => {
       soloMode = false;
       overlay.classList.add('hidden');
+      touchControls.classList.remove('hidden');
       resetGame();
       running = true;
       requestAnimationFrame(loop);
@@ -210,6 +303,7 @@
     soloBtn.addEventListener('click', () => {
       soloMode = true;
       overlay.classList.add('hidden');
+      touchControls.classList.remove('hidden');
       resetGame();
       running = true;
       requestAnimationFrame(loop);
@@ -474,6 +568,7 @@
       overlay.querySelector('p').innerHTML = `P1: ${P1.score} · P2: ${P2.score}<br>Team total: ${total}`;
       startBtn.textContent = 'PLAY AGAIN';
       soloBtn.textContent = soloMode ? 'SOLO AGAIN' : 'SOLO (AI PARTNER)';
+      touchControls.classList.add('hidden');
       overlay.classList.remove('hidden');
     }
 
