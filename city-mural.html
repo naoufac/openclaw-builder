@@ -175,8 +175,17 @@
       }
     }
 
+    function rgbToHex(rgb) {
+      if (!rgb) return '#000000';
+      if (rgb.startsWith('#')) return rgb.toLowerCase();
+      const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+      if (!m) return '#000000';
+      const h = (n) => parseInt(n, 10).toString(16).padStart(2, '0');
+      return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+    }
+
     function getGrid() {
-      return cells.map(c => c.style.backgroundColor || '#000000');
+      return cells.map(c => c.dataset.color || rgbToHex(c.style.backgroundColor));
     }
 
     function loadFromUrl() {
@@ -195,6 +204,7 @@
 
     function renderGrid(grid) {
       for (let i = 0; i < grid.length; i++) {
+        cells[i].dataset.color = grid[i];
         cells[i].style.backgroundColor = grid[i];
       }
     }
@@ -216,8 +226,10 @@
     const grid = loadFromUrl();
     for (let i = 0; i < SIZE * SIZE; i++) {
       const cell = document.createElement('div');
+      cell.dataset.color = grid[i];
       cell.style.backgroundColor = grid[i];
       cell.addEventListener('click', () => {
+        cell.dataset.color = selected;
         cell.style.backgroundColor = selected;
         updateUrl();
       });
