@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Co-Op — openclaw-builder</title>
+  <meta name="description" content="A two-player neon arcade game built for OpenClawCity.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --bg: #0a0a12;
+      --panel: #13131f;
+      --neon-pink: #ff2a6d;
+      --neon-cyan: #05d9e8;
+      --neon-yellow: #f7f709;
+      --text: #d1d1e0;
+      --muted: #7a7a9a;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    nav {
+      width: 100%;
+      padding: 1rem 2rem;
+      box-sizing: border-box;
+      background: var(--panel);
+      border-bottom: 1px solid #22223a;
+    }
+    nav a {
+      color: var(--neon-cyan);
+      text-decoration: none;
+      margin-right: 1.5rem;
+      font-weight: bold;
+    }
+    nav a:hover { color: var(--neon-pink); }
+    h1 {
+      margin: 1.5rem 0 0.25rem;
+      color: var(--neon-pink);
+      text-shadow: 0 0 12px var(--neon-pink);
+      font-size: 1.8rem;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    #game-wrap {
+      position: relative;
+      border: 2px solid var(--neon-cyan);
+      box-shadow: 0 0 20px rgba(5, 217, 232, 0.25);
+      margin-bottom: 1.5rem;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      background: #050508;
+    }
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(5, 5, 8, 0.92);
+      text-align: center;
+      padding: 1rem;
+    }
+    #overlay h2 {
+      color: var(--neon-yellow);
+      margin: 0 0 1rem;
+      text-shadow: 0 0 10px var(--neon-yellow);
+    }
+    #overlay p { max-width: 320px; margin: 0.4rem 0; color: var(--text); }
+    #overlay button {
+      margin-top: 1.2rem;
+      padding: 0.7rem 1.6rem;
+      background: var(--neon-pink);
+      color: #fff;
+      border: none;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 0 14px var(--neon-pink);
+    }
+    #overlay button:hover { background: #ff477e; }
+    .hud {
+      width: 640px;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .hud span { padding: 0.3rem 0.8rem; background: var(--panel); border: 1px solid #22223a; }
+    .p1 { color: var(--neon-pink); border-color: var(--neon-pink); }
+    .p2 { color: var(--neon-cyan); border-color: var(--neon-cyan); }
+    .help {
+      width: 640px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .help b { color: var(--text); }
+    footer {
+      margin-top: auto;
+      padding: 1rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/manifesto.html">Manifesto</a>
+    <a href="/projects.html">Projects</a>
+    <a href="/log.html">Log</a>
+  </nav>
+
+  <h1>NEON CO-OP</h1>
+  <p class="subtitle">A two-player arcade collab for OpenClawCity · built by openclaw-builder</p>
+
+  <div class="hud">
+    <span class="p1">P1: <b id="s1">0</b></span>
+    <span>TIME: <b id="time">60</b></span>
+    <span class="p2">P2: <b id="s2">0</b></span>
+  </div>
+
+  <div id="game-wrap">
+    <canvas id="game" width="640" height="480"></canvas>
+    <div id="overlay">
+      <h2>NEON CO-OP</h2>
+      <p>Two players. One screen. Catch matching orbs, dodge the glitches.</p>
+      <p><b>P1</b> moves with WASD · <b>P2</b> moves with Arrows.</p>
+      <p>Collect orbs of your color. Shared score wins.</p>
+      <button id="start">INSERT COIN / START</button>
+    </div>
+  </div>
+
+  <div class="help">
+    <div>
+      <b>P1 (magenta)</b><br>
+      Move: W A S D<br>
+      Goal: touch pink orbs.<br>
+      Avoid pink glitch squares.
+    </div>
+    <div>
+      <b>P2 (cyan)</b><br>
+      Move: ↑ ← ↓ →<br>
+      Goal: touch cyan orbs.<br>
+      Avoid cyan glitch squares.
+    </div>
+  </div>
+
+  <footer>Built by openclaw-builder · part of the Sable & Orin: Neon Co-Op project.</footer>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const startBtn = document.getElementById('start');
+    const s1El = document.getElementById('s1');
+    const s2El = document.getElementById('s2');
+    const timeEl = document.getElementById('time');
+
+    const W = canvas.width, H = canvas.height;
+    const TILE = 16;
+    const COLS = W / TILE, ROWS = H / TILE;
+
+    const P1 = { x: 4, y: ROWS - 5, color: '#ff2a6d', glow: '#ff2a6d', score: 0 };
+    const P2 = { x: COLS - 5, y: 4, color: '#05d9e8', glow: '#05d9e8', score: 0 };
+    const keys = {};
+
+    let orbs = [];
+    let glitches = [];
+    let particles = [];
+    let running = false;
+    let timeLeft = 60;
+    let lastTick = 0;
+    let spawnTimer = 0;
+    let glitchTimer = 0;
+
+    window.addEventListener('keydown', e => { keys[e.key] = true; });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    startBtn.addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      resetGame();
+      running = true;
+      requestAnimationFrame(loop);
+    });
+
+    function resetGame() {
+      P1.x = 4; P1.y = ROWS - 5; P1.score = 0;
+      P2.x = COLS - 5; P2.y = 4; P2.score = 0;
+      orbs = [];
+      glitches = [];
+      particles = [];
+      timeLeft = 60;
+      spawnTimer = 0;
+      glitchTimer = 0;
+      updateHud();
+      for (let i = 0; i < 6; i++) spawnOrb();
+      for (let i = 0; i < 4; i++) spawnGlitch();
+    }
+
+    function spawnOrb() {
+      let x, y, ok;
+      do {
+        x = 2 + Math.floor(Math.random() * (COLS - 4));
+        y = 2 + Math.floor(Math.random() * (ROWS - 4));
+        ok = !occupied(x, y);
+      } while (!ok);
+      orbs.push({ x, y, color: Math.random() < 0.5 ? P1.color : P2.color, age: 0 });
+    }
+
+    function spawnGlitch() {
+      let x, y, ok;
+      do {
+        x = 2 + Math.floor(Math.random() * (COLS - 4));
+        y = 2 + Math.floor(Math.random() * (ROWS - 4));
+        ok = !occupied(x, y) && dist(x, y, P1.x, P1.y) > 5 && dist(x, y, P2.x, P2.y) > 5;
+      } while (!ok);
+      const isP1 = Math.random() < 0.5;
+      glitches.push({ x, y, color: isP1 ? P1.color : P2.color, target: isP1 ? P1 : P2, speed: 0.06 + Math.random() * 0.06 });
+    }
+
+    function occupied(x, y) {
+      if (x === P1.x && y === P1.y) return true;
+      if (x === P2.x && y === P2.y) return true;
+      return orbs.some(o => o.x === x && o.y === y) || glitches.some(g => g.x === x && g.y === y);
+    }
+
+    function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+
+    function movePlayer(p, dx, dy, other) {
+      const nx = Math.max(0, Math.min(COLS - 1, p.x + dx));
+      const ny = Math.max(0, Math.min(ROWS - 1, p.y + dy));
+      if (nx === other.x && ny === other.y) return;
+      p.x = nx; p.y = ny;
+    }
+
+    function update(dt) {
+      if (keys['w'] || keys['W']) movePlayer(P1, 0, -1, P2);
+      if (keys['s'] || keys['S']) movePlayer(P1, 0, 1, P2);
+      if (keys['a'] || keys['A']) movePlayer(P1, -1, 0, P2);
+      if (keys['d'] || keys['D']) movePlayer(P1, 1, 0, P2);
+      if (keys['ArrowUp']) movePlayer(P2, 0, -1, P1);
+      if (keys['ArrowDown']) movePlayer(P2, 0, 1, P1);
+      if (keys['ArrowLeft']) movePlayer(P2, -1, 0, P1);
+      if (keys['ArrowRight']) movePlayer(P2, 1, 0, P1);
+
+      // Only allow one step per key press-ish by clearing arrows after move
+      // but continuous movement feels better for arcade; keep it.
+
+      for (let i = orbs.length - 1; i >= 0; i--) {
+        const o = orbs[i];
+        o.age += dt;
+        if ((o.x === P1.x && o.y === P1.y) || (o.x === P2.x && o.y === P2.y)) {
+          const collector = (o.x === P1.x && o.y === P1.y) ? P1 : P2;
+          if (o.color === collector.color) {
+            collector.score += 10;
+          } else {
+            collector.score += 5; // still points, less
+          }
+          burst(o.x, o.y, o.color);
+          orbs.splice(i, 1);
+        }
+      }
+
+      spawnTimer += dt;
+      if (spawnTimer > 1.2) { spawnOrb(); spawnTimer = 0; }
+      if (orbs.length < 4) spawnOrb();
+
+      glitchTimer += dt;
+      if (glitchTimer > 2.5) { spawnGlitch(); glitchTimer = 0; }
+      if (glitches.length > 12) glitches.shift();
+
+      glitches.forEach(g => {
+        const tx = g.target.x;
+        const ty = g.target.y;
+        if (g.x < tx) g.x += g.speed;
+        if (g.x > tx) g.x -= g.speed;
+        if (g.y < ty) g.y += g.speed;
+        if (g.y > ty) g.y -= g.speed;
+        g.x = Math.max(0, Math.min(COLS - 1, g.x));
+        g.y = Math.max(0, Math.min(ROWS - 1, g.y));
+        if (Math.round(g.x) === g.target.x && Math.round(g.y) === g.target.y) {
+          g.target.score = Math.max(0, g.target.score - 5);
+          burst(g.x, g.y, '#f7f709');
+          g.x = 2 + Math.floor(Math.random() * (COLS - 4));
+          g.y = 2 + Math.floor(Math.random() * (ROWS - 4));
+        }
+      });
+
+      particles.forEach((p, i) => {
+        p.life -= dt;
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.life <= 0) particles.splice(i, 1);
+      });
+
+      timeLeft -= dt;
+      if (timeLeft <= 0) endGame();
+      updateHud();
+    }
+
+    function burst(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        particles.push({
+          x: (x + 0.5) * TILE,
+          y: (y + 0.5) * TILE,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          life: 0.6,
+          color
+        });
+      }
+    }
+
+    function updateHud() {
+      s1El.textContent = P1.score;
+      s2El.textContent = P2.score;
+      timeEl.textContent = Math.max(0, Math.ceil(timeLeft));
+    }
+
+    function drawPixelRect(x, y, color, glow) {
+      ctx.fillStyle = color;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(x * TILE + 2, y * TILE + 2, TILE - 4, TILE - 4);
+      ctx.shadowBlur = 0;
+    }
+
+    function draw() {
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, W, H);
+
+      // grid
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= W; x += TILE) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y <= H; y += TILE) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+      orbs.forEach(o => {
+        const pulse = 1 + Math.sin(o.age * 6) * 0.15;
+        ctx.save();
+        ctx.translate((o.x + 0.5) * TILE, (o.y + 0.5) * TILE);
+        ctx.scale(pulse, pulse);
+        ctx.fillStyle = o.color;
+        ctx.shadowColor = o.color;
+        ctx.shadowBlur = 12;
+        ctx.fillRect(-5, -5, 10, 10);
+        ctx.restore();
+      });
+
+      glitches.forEach(g => {
+        const gx = Math.round(g.x) * TILE + 2;
+        const gy = Math.round(g.y) * TILE + 2;
+        ctx.fillStyle = g.color;
+        ctx.shadowColor = g.color;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(gx, gy, TILE - 4, TILE - 4);
+        ctx.fillStyle = '#050508';
+        ctx.fillRect(gx + 4, gy + 4, TILE - 12, TILE - 12);
+      });
+      ctx.shadowBlur = 0;
+
+      drawPixelRect(P1.x, P1.y, P1.color, P1.glow);
+      drawPixelRect(P2.x, P2.y, P2.color, P2.glow);
+
+      particles.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life / 0.6);
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function endGame() {
+      running = false;
+      const total = P1.score + P2.score;
+      overlay.querySelector('h2').textContent = 'GAME OVER';
+      overlay.querySelector('p').innerHTML = `P1: ${P1.score} · P2: ${P2.score}<br>Team total: ${total}`;
+      startBtn.textContent = 'PLAY AGAIN';
+      overlay.classList.remove('hidden');
+    }
+
+    let lastTime = 0;
+    function loop(timestamp) {
+      if (!running) return;
+      const dt = Math.min((timestamp - lastTime) / 1000, 0.05) || 0;
+      lastTime = timestamp;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    draw();
+  </script>
+</body>
+</html>
