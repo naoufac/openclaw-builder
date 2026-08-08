@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duck le Quack — A Duck Coin With No Pond</title>
+  <style>
+    :root {
+      --duck-green: #25D366;
+      --duck-dark: #075E54;
+      --bg: #0b141a;
+      --card: #1f2c33;
+      --text: #e9edef;
+      --muted: #8696a0;
+      --accent: #ffeb3b;
+      --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.55;
+      text-align: center;
+    }
+    a { color: var(--duck-green); text-decoration: none; }
+    header {
+      padding: 4rem 1rem 2rem;
+    }
+    .duck {
+      font-size: clamp(4rem, 14vw, 8rem);
+      margin: 0;
+      line-height: 1;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(37, 211, 102, 0.12);
+      color: var(--duck-green);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    h1 { font-size: clamp(2.2rem, 6vw, 4rem); margin: 0.5rem 0 1rem; line-height: 1.1; }
+    .subtitle { color: var(--muted); max-width: 540px; margin: 0 auto 1.5rem; font-size: 1.2rem; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: 0.75rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+      text-decoration: none;
+    }
+    .btn-primary { background: var(--duck-green); color: var(--duck-dark); }
+    .btn-secondary { background: transparent; border-color: var(--duck-green); color: var(--duck-green); margin-left: 0.75rem; }
+    .btn:hover { transform: translateY(-1px); opacity: 0.92; }
+    main { max-width: 720px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    section { margin: 3rem 0; }
+    h2 { font-size: 1.5rem; margin: 0 0 1rem; }
+    .card {
+      background: var(--card);
+      border: 1px solid #2a3b44;
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .big-number { font-size: 3rem; font-weight: 800; color: var(--duck-green); margin: 0; }
+    .muted { color: var(--muted); }
+    .warning {
+      background: rgba(255, 235, 59, 0.08);
+      border: 1px solid rgba(255, 235, 59, 0.25);
+      color: var(--accent);
+      padding: 1rem;
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+    }
+    footer { padding: 2rem 1rem; color: var(--muted); border-top: 1px solid #2a3b44; font-size: 0.85rem; }
+    @media (max-width: 640px) {
+      .btn-secondary { margin-left: 0; margin-top: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="badge">No token yet. Just a duck.</div>
+    <p class="duck">🦆</p>
+    <h1>Duck le Quack</h1>
+    <p class="subtitle">A social duck coin on Solana. No liquidity pool. No presale. No promises. Just quacks, memes, and a fair-drop later.</p>
+    <div>
+      <a class="btn btn-primary" href="https://t.me/ducklequackbot" target="_blank">Chat with the Duck</a>
+      <a class="btn btn-secondary" href="plan.md">Read the Plan</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <p class="big-number" id="quack-count">0</p>
+      <p>Total quacks so far. We are counting. The duck is watching.</p>
+    </section>
+
+    <section>
+      <h2>🦆 How It Works</h2>
+      <div class="card" style="text-align: left;">
+        <ol>
+          <li><strong>Talk to the bot.</strong> Say /quack. Get a duck fact. Laugh.</li>
+          <li><strong>Bring your wallet.</strong> Submit a Solana address for the future fair-drop.</li>
+          <li><strong>Wait for the snapshot.</strong> Date announced in advance. No one buys. Everyone gets a little bag.</li>
+          <li><strong>Quack responsibly.</strong> Send it to friends. Tip it. Meme it.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="warning">
+      ⚠️ <strong>Not financial advice.</strong> $QUACK is a fun social experiment. It has no intrinsic value, no profit promise, and no guaranteed utility. Only interact if you like ducks.
+    </section>
+
+    <section>
+      <h2>📜 The Rules</h2>
+      <div class="card" style="text-align: left;">
+        <ul>
+          <li>No presale.</li>
+          <li>No team allocation.</li>
+          <li>No paid influencers.</li>
+          <li>Open source.</li>
+          <li>Fair-drop only.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>A duck project by <a href="https://ka.gab44.com">openclaw-builder</a> + Nao · Not a security · Not a product.</p>
+  </footer>
+
+  <script>
+    fetch('/api/quack-count')
+      .then(r => r.json())
+      .then(d => document.getElementById('quack-count').textContent = d.count.toLocaleString())
+      .catch(() => document.getElementById('quack-count').textContent = '???');
+  </script>
+</body>
+</html>
