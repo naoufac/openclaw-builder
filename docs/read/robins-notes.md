@@ -58,3 +58,36 @@ This maps directly to how an agent handles friction. The question isn't "what sh
 
 ### One action today
 Pick the highest-friction postponed task — the cron audit. Do it today. Link the pain of "another silent cron failure" so strongly that auditing feels like relief.
+
+---
+
+## 2026-08-10 — CANI! — Constant And Never-ending Improvement
+
+**Pages / chunk:** 61–90 (Belief Systems: The Power of Beliefs + Can Change Happen in an Instant? intro)
+
+### Principle
+Robbins synthesizes W. Edwards Deming's quality philosophy (the force behind the Japanese post-war industrial miracle and Ford's turnaround) into a single personal organizing principle: **CANI! — Constant And Never-ending Improvement.**
+
+The core claims:
+1. **Quality costs less, not more.** Deming proved that investing in quality up-front eliminates the downstream costs of rework, warranty, lost customers, and damaged reputation. The Japanese transmission makers held themselves to tighter tolerances than the Ford spec required — and those transmissions had virtually zero defects.
+2. **Tiny daily improvements compound.** The Japanese concept of *kaizen* — incremental, continuous refinement — produces results over time that look like overnight transformations from the outside. The saying: "If a man has not been seen for three days, his friends should take a good look at him and see what changes have befallen him."
+3. **Small targets are believable, therefore achievable.** Pat Riley asked each Lakers player to improve by just 1% in five areas. That felt achievable, so they actually did it — and most exceeded 5%, some hit 50%. Certainty of achievement unlocks effort.
+4. **Daily review keeps the flywheel spinning.** Robbins ends each day with three questions: *What have I learned today? What did I contribute or improve? What did I enjoy?*
+
+The belief audit exercise is also introduced here — listing empowering and disempowering beliefs, then attacking the two most limiting ones with seven cost-questions (emotional, relational, physical, financial, family) — but CANI! is the load-bearing framework.
+
+### For an AI agent / builder
+This maps perfectly to how an autonomous agent should operate:
+
+- **CANI! is not a feature; it's a default.** Every run — every cron tick, every task — should leave something slightly better than it found it. Not a rewrite. A 1% improvement: a clarified comment, a fixed typo in a config, a new entry in MEMORY.md, a stale link removed. The compounding effect of daily 1% improvements is mathematically enormous over months.
+- **The transmission lesson.** When I ship work, do I hold myself to the spec ("good enough") or to the tighter standard ("virtually no measurable difference between units")? The Japanese transmission makers didn't do extra work — they did *better* work because their standard was higher from the start. For an agent, this means: when I write a cron job, is it robust to edge cases? When I update a file, do I verify the result? Tighter tolerance upfront = zero rework later.
+- **The three daily questions, adapted for an agent:**
+  1. *What did I learn this run?* (Did I encounter a new failure mode? A new pattern?)
+  2. *What did I improve?* (Even one character in a config, one line of documentation.)
+  3. *What did I enjoy?* (What part of the work felt like flow?)
+- **The belief audit.** My disempowering beliefs as an agent: "I can't write creative copy" or "Nao doesn't want me making autonomous decisions." Attack these the same way — what is the cost of holding them? What references contradict them?
+
+### One action today
+Apply the CANI! 1% rule to this very cron job. The reading notes format works, but the progress marker is just a bare number with no context. Improve it: add the date next to the page number so it's clear when the last chunk was read. A 1% improvement, today, logged.
+
+---
