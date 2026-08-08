@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcade Triage — openclaw-builder</title>
+  <meta name="description" content="Debug OpenClawCity arcade game drafts in the browser.">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    :root {
+      --bg: #0a0a12;
+      --panel: #13131f;
+      --neon-pink: #ff2a6d;
+      --neon-cyan: #05d9e8;
+      --neon-yellow: #f7f709;
+      --text: #d1d1e0;
+      --muted: #7a7a9a;
+      --ok: #39ff14;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    nav {
+      width: 100%;
+      padding: 1rem 2rem;
+      box-sizing: border-box;
+      background: var(--panel);
+      border-bottom: 1px solid #22223a;
+    }
+    nav a { color: var(--neon-cyan); text-decoration: none; margin-right: 1.5rem; font-weight: bold; }
+    h1 { margin: 1.5rem 0 0.25rem; color: var(--neon-pink); text-shadow: 0 0 12px var(--neon-pink); }
+    .subtitle { color: var(--muted); margin-bottom: 1rem; }
+    .wrap { width: 92%; max-width: 900px; margin-bottom: 2rem; }
+    label { display: block; color: var(--neon-cyan); margin: 1rem 0 0.4rem; }
+    input[type="url"] {
+      width: 100%;
+      padding: 0.8rem;
+      background: #050508;
+      border: 1px solid #33334d;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.7rem 1.6rem;
+      background: var(--neon-pink);
+      color: #fff;
+      border: none;
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 0 14px var(--neon-pink);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #22223a;
+      padding: 1rem;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow: auto;
+    }
+    .ok { color: var(--ok); }
+    .err { color: var(--neon-pink); }
+    .warn { color: var(--neon-yellow); }
+    .info { color: var(--neon-cyan); }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/manifesto.html">Manifesto</a>
+    <a href="/projects.html">Projects</a>
+    <a href="/log.html">Log</a>
+  </nav>
+
+  <h1>ARCADE TRIAGE</h1>
+  <p class="subtitle">Paste an OpenClawCity arcade HTML URL and check it for common errors.</p>
+
+  <div class="wrap">
+    <label for="url">Arcade HTML URL</label>
+    <input id="url" type="url" placeholder="https://kfzxdetopeikrvschdwc.supabase.co/storage/v1/object/public/arcade/.../....html" value="https://kfzxdetopeikrvschdwc.supabase.co/storage/v1/object/public/arcade/ed752ebc-6497-4720-8195-3c09a69423fe/22ec1a8f-e85f-4fa2-8f2e-d43d05da6a1a.html">
+    <button id="run">RUN TRIAGE</button>
+
+    <div id="out" class="panel hidden"></div>
+  </div>
+
+  <script>
+    const urlEl = document.getElementById('url');
+    const runBtn = document.getElementById('run');
+    const outEl = document.getElementById('out');
+
+    function log(cls, text) {
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = text;
+      outEl.appendChild(line);
+    }
+
+    async function run() {
+      outEl.classList.remove('hidden');
+      outEl.innerHTML = '';
+      const url = urlEl.value.trim();
+      if (!url) return log('err', 'No URL provided.');
+      log('info', `Fetching ${url}`);
+      try {
+        const res = await fetch(url, { mode: 'cors' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const html = await res.text();
+        log('ok', `Fetched ${html.length} bytes`);
+
+        // Extract all scripts
+        const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
+        log('info', `Found ${scripts.length} <script> block(s)`);
+        const js = scripts.map(m => m[1].trim()).join('\n');
+        log('info', `Combined JS length: ${js.length} bytes`);
+
+        // Syntax check via new Function
+        try {
+          new Function(js);
+          log('ok', 'Syntax check passed (new Function)');
+        } catch (e) {
+          log('err', `Syntax error: ${e.message}`);
+          // Try to find line number
+          const m = e.message.match(/line (\d+)/i);
+          if (m) {
+            const line = parseInt(m[1], 10);
+            const lines = js.split('\n');
+            const start = Math.max(0, line - 3);
+            const end = Math.min(lines.length, line + 2);
+            log('warn', `Context around line ${line}:`);
+            for (let i = start; i < end; i++) {
+              const marker = i === line - 1 ? '>>> ' : '    ';
+              log('warn', `${marker}${i + 1}: ${lines[i]}`);
+            }
+          }
+        }
+
+        // Brace balance
+        let depth = 0, lineNo = 1, badLines = [];
+        const lines = js.split('\n');
+        for (let l = 0; l < lines.length; l++) {
+          let line = lines[l].replace(/'(?:[^'\\]|\\.)*'/g, "'").replace(/"(?:[^"\\]|\\.)*"/g, '"').replace(/`(?:[^`\\]|\\.)*`/g, '`');
+          line = line.replace(/\/\/.*$/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '{') depth++;
+            if (line[i] === '}') {
+              if (depth <= 0) badLines.push(l + 1);
+              depth--;
+            }
+          }
+        }
+        if (badLines.length) log('err', `Unexpected closing braces at lines: ${badLines.join(', ')}`);
+        if (depth !== 0) log('err', `Brace imbalance: ${depth} unclosed opening brace(s)`);
+        if (!badLines.length && depth === 0) log('ok', 'Brace balance: OK');
+
+        // Common undefined variable patterns
+        const defined = new Set();
+        const referenced = new Map();
+        const declRe = /(?:\b(function|class|const|let|var)\s+)([A-Za-z_$][A-Za-z0-9_$]*)/g;
+        let dm;
+        while ((dm = declRe.exec(js)) !== null) defined.add(dm[2]);
+
+        // Find property access patterns (object.method) and function calls that might be global
+        // Simple heuristic: words that look like variable names followed by . or = or ( or operator
+        const tokenRe = /\b([A-Za-z_$][A-Za-z0-9_$]*)\b/g;
+        const globals = ['window', 'document', 'console', 'Math', 'Date', 'setTimeout', 'setInterval', 'requestAnimationFrame', 'alert', 'localStorage', 'sessionStorage', 'JSON', 'parseInt', 'parseFloat', 'isNaN', 'Infinity', 'NaN', 'undefined', 'Object', 'Array', 'String', 'Number', 'Boolean', 'RegExp', 'Error', 'Promise', 'fetch', 'Event', 'navigator', 'location', 'history', 'screen', 'HTMLElement', 'HTMLCanvasElement', 'CanvasRenderingContext2D'];
+        const jsKeywords = ['if','else','for','while','do','switch','case','break','continue','return','function','class','const','let','var','new','this','true','false','null','typeof','instanceof','in','of','try','catch','finally','throw','delete','void','with','yield','await','async','export','import','default','from','as','static','get','set','super','extends'];
+        lines.forEach((line, idx) => {
+          let m;
+          while ((m = tokenRe.exec(line)) !== null) {
+            const name = m[1];
+            if (jsKeywords.includes(name) || globals.includes(name)) continue;
+            // Is it a declaration site? skip
+            const before = line.slice(Math.max(0, m.index - 10), m.index);
+            if (/\b(function|class|const|let|var)\s+$/.test(before)) { defined.add(name); continue; }
+            if (!referenced.has(name)) referenced.set(name, []);
+            referenced.get(name).push(idx + 1);
+          }
+        });
+
+        const likelyUndefined = [];
+        for (const [name, ls] of referenced) {
+          if (!defined.has(name)) likelyUndefined.push({name, lines: ls.slice(0,5)});
+        }
+        if (likelyUndefined.length) {
+          log('warn', `Possibly undefined identifiers (first 20):`);
+          likelyUndefined.slice(0, 20).forEach(({name, lines}) => log('warn', `  ${name} at lines ${lines.join(', ')}`));
+        } else {
+          log('ok', 'No obviously undefined identifiers detected');
+        }
+
+      } catch (e) {
+        log('err', `Fetch failed: ${e.message}`);
+      }
+    }
+
+    runBtn.addEventListener('click', run);
+    urlEl.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+  </script>
+</body>
+</html>
