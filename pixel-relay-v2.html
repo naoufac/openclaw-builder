@@ -50,15 +50,15 @@
     <div id="overlay">
       <h2>PIXEL RELAY v2</h2>
       <p>Runner A carries the baton from the left. Runner B waits on the right.</p>
-      <p>Meet at the handoff zone to pass the baton. Reach the final goal together.</p>
-      <p>Avoid spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT LAYER.</p>
+      <p>Meet at the handoff zone to pass the baton. Reach the goal with the baton carrier.</p>
+      <p>Avoid spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT RUN.</p>
       <p>Chain crescent pickups for a CRUMB COMBO before finishing.</p>
-      <p><b>Controls:</b> WASD / Arrows to move · Space to swap runner in solo mode.</p>
+      <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap runner · H to handoff when both runners are in the zone.</p>
       <button id="start">START RELAY</button>
     </div>
   </div>
   <div class="help">
-    <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone and press <b>Space</b> to pass.
+    <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone with both runners and press <b>H</b> to pass.
     Then <b>Runner B (cyan)</b> carries it to the goal. Clean handoff with no spike hits spawns a crescent bonus worth +5 seconds.
     Chain crescent pickups for a CRUMB COMBO and aim for a PERFECT RUN (all orbs, no spikes) for +250.
     Sprite hooks are ready for Hardy’s pixel-art pass. Add-on idea: croissantman.
@@ -159,7 +159,7 @@
 
     const runners = [
       { name: 'A', x: 30, y: 240, w: 16, h: 24, color: '#ff2a6d', vx: 0, vy: 0, onGround: false, hasBaton: true, active: true },
-      { name: 'B', x: 600, y: 240, w: 16, h: 24, color: '#05d9e8', vx: 0, vy: 0, onGround: false, hasBaton: false, active: false }
+      { name: 'B', x: 660, y: 190, w: 16, h: 24, color: '#05d9e8', vx: 0, vy: 0, onGround: false, hasBaton: false, active: false }
     ];
     let platforms = [];
     let hazards = [];
@@ -181,7 +181,8 @@
 
     window.addEventListener('keydown', e => {
       keys[e.key] = true;
-      if (e.key === ' ') { e.preventDefault(); trySwap(); }
+      if (e.key === ' ') { e.preventDefault(); tryToggleRunner(); }
+      if (e.key === 'h' || e.key === 'H') { e.preventDefault(); trySwap(); }
     });
     window.addEventListener('keyup', e => keys[e.key] = false);
 
@@ -204,11 +205,17 @@
         if (!hitHazardThisRun) {
           crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 40, r: 12, active: true };
         }
-      } else if (solo) {
-        // toggle active runner if both aren't in handoff zone
-        a.active = !a.active; b.active = !b.active;
       }
       lastSwap = now;
+    }
+
+    function tryToggleRunner() {
+      if (!running) return;
+      // Space toggles active runner when not in handoff zone
+      const [a, b] = runners;
+      const inZone = handoffZone && rectIntersectInflated(a, handoffZone, 4) && rectIntersectInflated(b, handoffZone, 4);
+      if (inZone) return; // let H handle handoff
+      a.active = !a.active; b.active = !b.active;
     }
 
     function rectIntersect(a, b) {
@@ -224,31 +231,34 @@
         { x: 0, y: 280, w: 140, h: 12 },
         { x: 180, y: 240, w: 100, h: 12 },
         { x: 320, y: 200, w: 100, h: 12 }, // near handoff
-        { x: 480, y: 230, w: 100, h: 12 },
-        { x: 600, y: 280, w: 120, h: 12 },
-        { x: 540, y: 140, w: 120, h: 12 } // high goal platform
+        { x: 460, y: 260, w: 90, h: 12 },
+        { x: 580, y: 300, w: 100, h: 12 },
+        { x: 660, y: 240, w: 60, h: 12 },
+        { x: 560, y: 160, w: 120, h: 12 } // high goal platform
       ];
       hazards = [
         { x: 280, y: 340, w: 60, h: 20 }, // ground spikes between start and handoff
-        { x: 480, y: 340, w: 50, h: 20 }, // ground spikes before goal side
-        { x: 570, y: 120, w: 40, h: 20 }  // spikes under goal platform
+        { x: 420, y: 340, w: 70, h: 20 }, // ground spikes before goal side
+        { x: 590, y: 340, w: 80, h: 20 }, // spikes under B-side platforms
+        { x: 560, y: 140, w: 40, h: 20 }  // spikes under goal platform
       ];
       handoffZone = { x: 335, y: 160, w: 70, h: 40 };
-      goal = { x: 600, y: 100, w: 50, h: 40 };
+      goal = { x: 620, y: 120, w: 50, h: 40 };
       orbs = [
         { x: 90, y: 255, r: 5, taken: false },
         { x: 230, y: 215, r: 5, taken: false },
         { x: 365, y: 180, r: 5, taken: false },
-        { x: 520, y: 205, r: 5, taken: false },
-        { x: 660, y: 255, r: 5, taken: false },
-        { x: 600, y: 115, r: 5, taken: false }
+        { x: 505, y: 240, r: 5, taken: false },
+        { x: 630, y: 280, r: 5, taken: false },
+        { x: 690, y: 220, r: 5, taken: false },
+        { x: 620, y: 135, r: 5, taken: false }
       ];
     }
 
     function resetLevel() {
       runners[0].x = 30; runners[0].y = 240; runners[0].vx = 0; runners[0].vy = 0;
       runners[0].hasBaton = true; runners[0].active = true; runners[0].onGround = false;
-      runners[1].x = 600; runners[1].y = 240; runners[1].vx = 0; runners[1].vy = 0;
+      runners[1].x = 660; runners[1].y = 190; runners[1].vx = 0; runners[1].vy = 0;
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
       particles = []; timeLeft = 60; won = false; crescent = null; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0;
@@ -267,7 +277,7 @@
       if (!p.active) { p.vx *= FRICTION; return; }
       if (keys['ArrowLeft'] || keys['a'] || keys['A']) p.vx -= 1.1;
       if (keys['ArrowRight'] || keys['d'] || keys['D']) p.vx += 1.1;
-      if ((keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' ']) && p.onGround) {
+      if ((keys['ArrowUp'] || keys['w'] || keys['W']) && p.onGround) {
         p.vy = JUMP; p.onGround = false;
       }
     }
@@ -462,12 +472,12 @@
       }
       drawCombo();
       drawVictoryConfetti();
-      // PERFECT LAYER flash
+      // PERFECT RUN flash
       if (perfectLayerFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
-        ctx.fillText('PERFECT LAYER', W/2, H/2);
+        ctx.fillText('PERFECT RUN', W/2, H/2);
       }
     }
 
