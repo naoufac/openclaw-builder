@@ -51,14 +51,15 @@
       <h2>GOLDEN BATON TRIAL</h2>
       <p>Keep the baton warm. Pass clean. Chain the crumbs. Crown the run.</p>
       <p>Baker A carries the golden baton from the Cold Oven up the Butter Ramp to the Handoff Hearth.</p>
-      <p>Press H in the oven arch to pass the baton to Baker B. Clean handoff bakes a Golden Crescent above the arch.</p>
-      <p>Then guide Baker B back toward the arch, up through the B-Side Lamination, across the Proofing Gap, and into the Crown.</p>
+      <p>Press H in the oven arch to pass the baton to Baker B. A Golden Crescent bakes above the arch.</p>
+      <p>Follow the crumb trail to bring Baker B back through the arch — this rekindles the hearth. Then climb to the Crown.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap baker · H to handoff in arch</p>
       <button id="start">ENTER THE OVEN</button>
     </div>
   </div>
   <div class="help">
     <b>Croissant Nation rules:</b> Hit no <b>cooling spikes</b>. Collect every <b>butter pearl</b>. Hand off clean inside the <b>oven arch</b> with <b>H</b>.
+    A crumb trail appears after a clean handoff. Bring Baker B back through the arch to <b>rekindle the hearth</b> (+100, combo boost).
     Golden crescents appear only after a clean handoff. Chain them for a CRUMB CROWN. Perfect run = all pearls + no spikes + crown finish = +300.
     Use <b>Space</b> to switch control between bakers when you need to reposition.
   </div>
@@ -190,6 +191,9 @@
     let handoffZone = null;
     let goal = null;
     let crescent = null;
+    let crumbTrail = [];
+    let hearthRekindled = false;
+    let rekindleFlash = 0;
     let timeLeft = 70, running = false, solo = true;
     let best = 0, won = false;
     let keys = {}, lastSwap = 0;
@@ -225,9 +229,24 @@
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c');
         if (!hitHazardThisRun) {
           crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 45, r: 13, active: true };
+          bakeCrumbTrail();
         }
       }
       lastSwap = now;
+    }
+
+    function bakeCrumbTrail() {
+      crumbTrail = [];
+      const startX = handoffZone.x + handoffZone.w/2;
+      const startY = handoffZone.y + handoffZone.h/2;
+      const endX = 640, endY = 200;
+      const steps = 16;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const x = startX + (endX - startX) * t + Math.sin(t * Math.PI * 3) * 30;
+        const y = startY + (endY - startY) * t - Math.abs(Math.cos(t * Math.PI * 2)) * 20;
+        crumbTrail.push({ x, y, active: true });
+      }
     }
 
     function tryToggleRunner() {
@@ -286,8 +305,8 @@
       runners[0].hasBaton = true; runners[0].active = true; runners[0].onGround = false;
       runners[1].x = 640; runners[1].y = 180; runners[1].vx = 0; runners[1].vy = 0;
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
-      particles = []; timeLeft = 70; won = false; crescent = null; collected = 0;
-      hitHazardThisRun = false; perfectLayerFlash = 0;
+      particles = []; timeLeft = 70; won = false; crescent = null; crumbTrail = []; collected = 0;
+      hitHazardThisRun = false; perfectLayerFlash = 0; rekindleFlash = 0; hearthRekindled = false;
       comboCount = 0; comboTimer = 0; comboActive = false;
       makeLevel(); updateHud();
     }
@@ -367,6 +386,14 @@
         }
       }
 
+      // Hearth rekindle: B returns through arch carrying baton
+      const b = runners[1];
+      if (!hearthRekindled && b.hasBaton && rectIntersectInflated(b, handoffZone, 4)) {
+        hearthRekindled = true; rekindleFlash = 1.5;
+        comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
+        spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c', true);
+      }
+
       for (const h of hazards) {
         const hurtBox = { x: h.x + 4, y: h.y + 8, w: h.w - 8, h: h.h - 8 };
         for (const r of runners) {
@@ -396,6 +423,7 @@
       }
 
       if (perfectLayerFlash > 0) perfectLayerFlash = Math.max(0, perfectLayerFlash - dt * 1.2);
+      if (rekindleFlash > 0) rekindleFlash = Math.max(0, rekindleFlash - dt * 0.8);
 
       if (comboActive) {
         comboTimer -= dt;
@@ -418,13 +446,15 @@
       running = false;
       if (win) {
         const baseScore = Math.ceil(timeLeft * 15) + 350;
+        const rekindleBonus = hearthRekindled ? 100 : 0;
         const comboBonus = comboActive ? comboCount * 60 : 0;
         const perfectBonus = (!hitHazardThisRun && collected === orbs.length) ? 300 : 0;
-        const score = baseScore + comboBonus + perfectBonus;
+        const score = baseScore + rekindleBonus + comboBonus + perfectBonus;
         best = Math.max(best, score);
         try { localStorage.setItem('pixelRelayCroissantBest', best.toString()); } catch (e) {}
         document.getElementById('best').textContent = best;
         let victoryText = `Score: ${score} · Best: ${best}<br>Baton warm, crown claimed.`;
+        if (hearthRekindled) victoryText += `<br>HEARTH REKINDLED +100`;
         if (comboActive) victoryText += `<br>Crumb Crown x${comboCount} +${comboBonus}`;
         if (perfectBonus) victoryText += `<br>CROISSANT NATION PERFECT RUN +300`;
         overlay('CROWN CLAIMED', victoryText, 'BAKE AGAIN');
@@ -459,6 +489,17 @@
       ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
     }
 
+    function drawCrumbTrail() {
+      if (!crumbTrail.length) return;
+      ctx.fillStyle = '#f7c95c'; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 6;
+      for (const c of crumbTrail) {
+        if (!c.active) continue;
+        ctx.globalAlpha = 0.5 + Math.sin(Date.now()/150 + c.x)*0.25;
+        ctx.beginPath(); ctx.arc(c.x, c.y, 2.5, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+
     function draw() {
       drawBackground();
       platforms.forEach(drawPlatform);
@@ -467,6 +508,7 @@
       if (goal) drawGoal(goal);
       orbs.forEach(o => { if (!o.taken) drawOrb(o); });
       if (crescent && crescent.active) drawCrescent(crescent);
+      drawCrumbTrail();
       runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton));
       for (const p of particles) {
         ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/0.7);
@@ -481,6 +523,12 @@
       }
       drawCombo();
       drawVictoryGlow();
+      if (rekindleFlash > 0) {
+        ctx.fillStyle = `rgba(247, 201, 92, ${rekindleFlash * 0.25})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 24px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('HEARTH REKINDLED', W/2, H/2);
+      }
       if (perfectLayerFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
         ctx.fillRect(0, 0, W, H);
