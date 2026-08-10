@@ -43,6 +43,7 @@
     <span class="p1">BAKER A: <b id="s1">ready</b></span>
     <span>TIME: <b id="time">70</b></span>
     <span>BEST: <b id="best">0</b></span>
+    <span>SEAMS: <b id="seams">0</b></span>
     <span class="p2">BAKER B: <b id="s2">idle</b></span>
   </div>
   <div id="wrap">
@@ -195,6 +196,9 @@
     let hearthRekindled = false;
     let rekindleFlash = 0;
     let timeLeft = 70, running = false, solo = true;
+    let liveSeam = [];
+    let publicSeams = [];
+    try { publicSeams = JSON.parse(localStorage.getItem('croissantPublicSeams') || '[]'); } catch(e) { publicSeams = []; }
     let best = 0, won = false;
     let keys = {}, lastSwap = 0;
     let perfectLayerFlash = 0;
@@ -307,7 +311,7 @@
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
       particles = []; timeLeft = 70; won = false; crescent = null; crumbTrail = []; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0; rekindleFlash = 0; hearthRekindled = false;
-      comboCount = 0; comboTimer = 0; comboActive = false;
+      comboCount = 0; comboTimer = 0; comboActive = false; liveSeam = [];
       makeLevel(); updateHud();
     }
 
@@ -392,6 +396,10 @@
         hearthRekindled = true; rekindleFlash = 1.5;
         comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c', true);
+        liveSeam = [{ x: b.x + b.w/2, y: b.y + b.h/2, t: 0 }];
+      }
+      if (hearthRekindled && b.hasBaton && liveSeam.length < 60) {
+        liveSeam.push({ x: b.x + b.w/2, y: b.y + b.h/2, t: liveSeam[liveSeam.length-1].t + 1 });
       }
 
       for (const h of hazards) {
@@ -440,10 +448,16 @@
       document.getElementById('s1').textContent = a.hasBaton ? 'baton' : (a.active ? 'active' : 'idle');
       document.getElementById('s2').textContent = b.hasBaton ? 'baton' : (b.active ? 'active' : 'idle');
       document.getElementById('time').textContent = Math.max(0, Math.ceil(timeLeft));
+      document.getElementById('seams').textContent = publicSeams.length;
     }
 
     function endGame(win) {
       running = false;
+      // Bake public seam if hearth was rekindled
+      if (hearthRekindled && liveSeam.length >= 3) {
+        publicSeams.push({ seed: Date.now(), points: liveSeam.slice(0, 60) });
+        try { localStorage.setItem('croissantPublicSeams', JSON.stringify(publicSeams)); } catch(e) {}
+      }
       if (win) {
         const baseScore = Math.ceil(timeLeft * 15) + 350;
         const rekindleBonus = hearthRekindled ? 100 : 0;
@@ -500,8 +514,23 @@
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
 
+    function drawPublicSeams() {
+      if (!publicSeams.length) return;
+      ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 4;
+      for (const seam of publicSeams) {
+        const age = Math.min(1, (Date.now() - seam.seed) / 600000); // fade over 10 min
+        ctx.globalAlpha = 0.25 * (1 - age);
+        ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        seam.points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    }
+
     function draw() {
       drawBackground();
+      drawPublicSeams();
       platforms.forEach(drawPlatform);
       hazards.forEach(drawHazard);
       if (handoffZone) drawHandoffZone(handoffZone, !hitHazardThisRun);
