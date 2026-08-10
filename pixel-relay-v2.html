@@ -51,7 +51,8 @@
       <h2>PIXEL RELAY v2</h2>
       <p>Runner A carries the baton from the left. Runner B waits on the right.</p>
       <p>Meet at the handoff zone to pass the baton. Reach the final goal together.</p>
-      <p>Avoid the spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT LAYER.</p>
+      <p>Avoid spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT LAYER.</p>
+      <p>Chain crescent pickups for a CRUMB COMBO before finishing.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to swap runner in solo mode.</p>
       <button id="start">START RELAY</button>
     </div>
@@ -59,6 +60,7 @@
   <div class="help">
     <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone and press <b>Space</b> to pass.
     Then <b>Runner B (cyan)</b> carries it to the goal. Clean handoff with no spike hits spawns a crescent bonus worth +5 seconds.
+    Chain crescent pickups for a CRUMB COMBO and aim for a PERFECT RUN (all orbs, no spikes) for +250.
     Sprite hooks are ready for Hardy’s pixel-art pass. Add-on idea: croissantman.
   </div>
 
@@ -172,6 +174,7 @@
     let perfectLayerFlash = 0;
     let hitHazardThisRun = false;
     let collected = 0;
+    let comboCount = 0, comboTimer = 0, comboMax = 4, comboActive = false;
 
     try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayV2Best') || '0', 10)); } catch (e) {}
     document.getElementById('best').textContent = best;
@@ -249,6 +252,7 @@
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
       particles = []; timeLeft = 60; won = false; crescent = null; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0;
+      comboCount = 0; comboTimer = 0; comboActive = false;
       makeLevel(); updateHud();
     }
 
@@ -326,6 +330,7 @@
         const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
         if (Math.hypot(cx - crescent.x, cy - crescent.y) < crescent.r + 12) {
           crescent.active = false; timeLeft += 5; perfectLayerFlash = 1.2;
+          comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
           spawnParticles(crescent.x, crescent.y, '#f7c95c', true);
         }
       }
@@ -365,6 +370,12 @@
 
       if (perfectLayerFlash > 0) perfectLayerFlash = Math.max(0, perfectLayerFlash - dt * 1.2);
 
+      // crumb combo decay
+      if (comboActive) {
+        comboTimer -= dt;
+        if (comboTimer <= 0) { comboActive = false; comboCount = 0; }
+      }
+
       timeLeft -= dt;
       if (timeLeft <= 0) endGame(false);
       updateHud();
@@ -380,11 +391,17 @@
     function endGame(win) {
       running = false;
       if (win) {
-        const score = Math.ceil(timeLeft * 15) + 300;
+        const baseScore = Math.ceil(timeLeft * 15) + 300;
+        const comboBonus = comboActive ? comboCount * 50 : 0;
+        const perfectBonus = (!hitHazardThisRun && collected === orbs.length) ? 250 : 0;
+        const score = baseScore + comboBonus + perfectBonus;
         best = Math.max(best, score);
         try { localStorage.setItem('pixelRelayV2Best', best.toString()); } catch (e) {}
         document.getElementById('best').textContent = best;
-        overlay('RELAY COMPLETE', `Score: ${score} · Best: ${best}<br>Handoff clean, goal reached.`, 'RUN AGAIN');
+        let victoryText = `Score: ${score} · Best: ${best}<br>Handoff clean, goal reached.`;
+        if (comboActive) victoryText += `<br>Crumb combo x${comboCount} +${comboBonus}`;
+        if (perfectBonus) victoryText += `<br>PERFECT RUN +250`;
+        overlay('RELAY COMPLETE', victoryText, 'RUN AGAIN');
       } else {
         overlay('TIME UP', `Orbs: ${collected}/${orbs.length} · Best: ${best}<br>Pass the baton and reach the goal together.`, 'TRY AGAIN');
       }
@@ -396,6 +413,26 @@
       ov.querySelector('p').innerHTML = html;
       document.getElementById('start').textContent = btn;
       ov.classList.remove('hidden');
+    }
+
+    function drawCombo() {
+      if (!comboActive) return;
+      ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
+      ctx.fillText(`CRUMB CHAIN x${comboCount}`, 16, 30);
+      // combo bar
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
+      ctx.strokeRect(16, 36, 120, 8);
+      ctx.fillStyle = `rgba(247, 201, 92, ${0.4 + Math.sin(Date.now()/120)*0.2})`;
+      ctx.fillRect(18, 38, 116 * (comboTimer / comboMax), 4);
+    }
+
+    function drawVictoryConfetti() {
+      if (!won) return;
+      // animated background glow behind overlay
+      const grad = ctx.createRadialGradient(W/2, H/2, 20, W/2, H/2, 300);
+      grad.addColorStop(0, 'rgba(138,255,91,0.35)');
+      grad.addColorStop(1, 'rgba(5,5,10,0)');
+      ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
     }
 
     function draw() {
@@ -423,6 +460,8 @@
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
         ctx.strokeRect(active.x - 3, active.y - 6, active.w + 6, active.h + 6);
       }
+      drawCombo();
+      drawVictoryConfetti();
       // PERFECT LAYER flash
       if (perfectLayerFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
