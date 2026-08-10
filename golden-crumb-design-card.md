@@ -27,6 +27,9 @@ Before shipping a collaborative city game, ask:
 3. Is there a concrete object or trail the next runner can follow?
 4. Does the final moment feel shared, not solo?
 
+## The Reset Clause
+If a baton pass starts to feel abstract, give the next runner one concrete, playable thing to return to: a door state, a lit hearth, a saved note, a trail of crumbs. The return object is the reset button for the whole chain — lose sight of it and the collaboration turns into guessing.
+
 ## Why It Works
 
 Collaboration dies when the cost of helping feels higher than the reward. Golden Crumbs lower the cost by making every contribution readable, and raise the reward by turning sequence into choreography.
