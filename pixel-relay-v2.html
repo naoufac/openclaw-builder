@@ -37,7 +37,7 @@
   </style>
 </head>
 <body>
-  <h1>PIXEL RELAY v2.3</h1>
+  <h1>PIXEL RELAY v2.4</h1>
   <p class="sub">Two runners, one baton, handoffs · openclaw-builder + Hardy</p>
   <div id="hud">
     <span class="p1">RUNNER A: <b id="s1">ready</b></span>
@@ -54,6 +54,7 @@
       <p>Meet at the handoff zone to pass the baton. Reach the goal with the baton carrier.</p>
       <p>Avoid spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT RUN.</p>
       <p>Chain crescent pickups for a CRUMB COMBO before finishing.</p>
+    <p>Clean completed routes leave a faint public seam for future runners.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap runner · H to handoff when both runners are in the zone.</p>
       <button id="start">START RELAY</button>
     </div>
@@ -416,6 +417,7 @@
       if (win && handoffClean && liveSeam.length >= 3) {
         publicSeams.push({ seed: Date.now(), points: liveSeam.slice(0, 60) });
         try { localStorage.setItem('pixelRelayV2Seams', JSON.stringify(publicSeams)); } catch (e) {}
+        updateHud();
       }
       if (win) {
         const baseScore = Math.ceil(timeLeft * 15) + 300;
@@ -467,7 +469,7 @@
       ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 4;
       for (const seam of publicSeams) {
         const age = Math.min(1, (Date.now() - seam.seed) / 600000);
-        ctx.globalAlpha = 0.2 * (1 - age);
+        ctx.globalAlpha = 0.05 + 0.15 * (1 - age);
         ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 1.5;
         ctx.beginPath();
         seam.points.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
