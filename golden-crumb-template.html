@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Crumb Template — Collaborative City Game Skeleton</title>
+  <style>
+    :root {
+      --bg: #0a0a12;
+      --panel: #161622;
+      --accent: #8aff5b;
+      --warm: #f7c95c;
+      --cool: #05d9e8;
+      --danger: #ff2a6d;
+      --text: #e0e0f0;
+      --muted: #8888aa;
+    }
+    body {
+      margin: 0;
+      padding: 1rem;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1 { color: var(--accent); text-shadow: 0 0 12px var(--accent); margin: 0.5rem 0; }
+    .sub { color: var(--muted); margin-bottom: 1rem; text-align: center; max-width: 720px; }
+    #game { border: 2px solid #2a2a44; background: #05050a; image-rendering: pixelated; }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      color: var(--text); text-align: center;
+    }
+    #overlay h2 { color: var(--accent); margin: 0 0 1rem; }
+    #overlay p { max-width: 480px; margin: 0.4rem 0; }
+    .hidden { display: none !important; }
+    .wrap { position: relative; }
+    #hud {
+      width: 720px; display: flex; justify-content: space-between; padding: 0.5rem 0;
+      color: var(--muted); font-size: 0.85rem;
+    }
+    #hud span { color: var(--text); }
+    .controls { color: var(--muted); font-size: 0.8rem; margin-top: 0.5rem; }
+    .controls b { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <h1>GOLDEN CRUMB TEMPLATE</h1>
+  <p class="sub">A minimal city-collab game skeleton: one mechanic, one return state, readable feedback, and hooks for art/music/code additions. Replace placeholder draw functions; physics stays the same.</p>
+
+  <div class="wrap">
+    <canvas id="game" width="720" height="360"></canvas>
+    <div id="overlay">
+      <h2>THE GOLDEN CRUMB PRINCIPLE</h2>
+      <p>1. Move Runner A into the <b>HANDOFF ZONE</b>.</p>
+      <p>2. Press <b>H</b> to pass the baton. A crumb trail appears.</p>
+      <p>3. Guide Runner B back to the <b>RETURN STATE</b> (lit hearth).</p>
+      <p>4. Then carry the baton to the <b>GOAL</b>.</p>
+      <p style="color:#8888aa;margin-top:1rem;">Press <b>Space</b> to begin.</p>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div>READY: <span id="ready">A</span></div>
+    <div>TIME: <span id="time">0.00</span></div>
+    <div>BEST: <span id="best">—</span></div>
+  </div>
+  <div class="controls"><b>Space</b> swap/jump · <b>H</b> handoff (in zone) · <b>R</b> reset</div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    // === GAME STATE ===
+    const state = {
+      running: false,
+      won: false,
+      time: 0,
+      best: parseFloat(localStorage.getItem('gct_best') || '0'),
+      active: 'A',
+      handoffDone: false,
+      returnTriggered: false,
+      combo: 0,
+      comboTimer: 0,
+      perfect: true,
+    };
+
+    const gravity = 0.5;
+    const groundY = 320;
+
+    const runnerA = { x: 60, y: 260, vx: 0, vy: 0, w: 16, h: 24, grounded: false, hasBaton: true, color: '#ff2a6d' };
+    const runnerB = { x: 620, y: 260, vx: 0, vy: 0, w: 16, h: 24, grounded: false, hasBaton: false, color: '#05d9e8' };
+    const runners = { A: runnerA, B: runnerB };
+
+    const platforms = [
+      { x: 0, y: groundY, w: 720, h: 40 },      // ground
+      { x: 140, y: 260, w: 120, h: 12 },       // mid A
+      { x: 460, y: 220, w: 120, h: 12 },       // mid B
+    ];
+
+    const handoffZone = { x: 180, y: 210, w: 70, h: 50 };
+    const returnState = { x: 110, y: 170, w: 40, h: 40 }; // the "lit hearth"
+    const goal = { x: 650, y: 180, w: 50, h: 40 };
+
+    // === INPUT ===
+    const keys = {};
+    window.addEventListener('keydown', e => {
+      keys[e.code] = true;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!state.running && !state.won) startGame();
+        else if (state.running) jumpOrSwap();
+      }
+      if (e.code === 'KeyH' && state.running) tryHandoff();
+      if (e.code === 'KeyR' && state.running) resetGame();
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    function startGame() {
+      document.getElementById('overlay').classList.add('hidden');
+      state.running = true;
+      state.won = false;
+      state.time = 0;
+      state.active = 'A';
+      state.handoffDone = false;
+      state.returnTriggered = false;
+      state.combo = 0;
+      state.comboTimer = 0;
+      state.perfect = true;
+      runnerA.x = 60; runnerA.y = 260; runnerA.vx = 0; runnerA.vy = 0; runnerA.hasBaton = true;
+      runnerB.x = 620; runnerB.y = 260; runnerB.vx = 0; runnerB.vy = 0; runnerB.hasBaton = false;
+      requestAnimationFrame(loop);
+    }
+
+    function resetGame() {
+      state.running = false;
+      state.won = false;
+      document.getElementById('overlay').classList.remove('hidden');
+    }
+
+    function jumpOrSwap() {
+      const r = runners[state.active];
+      if (r.grounded) r.vy = -9;
+      // Space does NOT hand off; it only jumps or (if allowed) swaps active runner.
+      // For this template, swapping is disabled until handoff completes.
+    }
+
+    function tryHandoff() {
+      if (state.handoffDone) return;
+      const a = runners.A, b = runners.B;
+      // A must have baton and both runners must overlap handoff zone
+      if (!a.hasBaton) return;
+      const aIn = rectIn(a, handoffZone), bIn = rectIn(b, handoffZone);
+      if (aIn && bIn) {
+        a.hasBaton = false;
+        b.hasBaton = true;
+        state.handoffDone = true;
+        state.active = 'B';
+        state.combo = 1;
+        state.comboTimer = 120;
+        bakeCrumbTrail();
+      }
+    }
+
+    function rectIn(r, zone) {
+      return r.x < zone.x + zone.w && r.x + r.w > zone.x &&
+             r.y < zone.y + zone.h && r.y + r.h > zone.y;
+    }
+
+    const crumbTrail = [];
+    function bakeCrumbTrail() {
+      crumbTrail.length = 0;
+      const start = { x: handoffZone.x + handoffZone.w / 2, y: handoffZone.y + handoffZone.h / 2 };
+      const end = { x: returnState.x + returnState.w / 2, y: returnState.y + returnState.h / 2 };
+      for (let i = 0; i < 15; i++) {
+        crumbTrail.push({
+          x: start.x + (end.x - start.x) * (i / 14),
+          y: start.y + (end.y - start.y) * (i / 14) + Math.sin(i) * 8,
+          age: i * 2
+        });
+      }
+    }
+
+    // === PHYSICS ===
+    function updateRunner(r) {
+      if (r === runners[state.active]) {
+        r.vx = 0;
+        if (keys['ArrowLeft'] || keys['KeyA']) r.vx = -3;
+        if (keys['ArrowRight'] || keys['KeyD']) r.vx = 3;
+      } else {
+        r.vx *= 0.9; // idle friction
+      }
+      r.x += r.vx;
+      r.vy += gravity;
+      r.y += r.vy;
+      r.grounded = false;
+
+      for (const p of platforms) {
+        if (r.x + r.w > p.x && r.x < p.x + p.w && r.y + r.h > p.y && r.y + r.h <= p.y + p.h + r.vy && r.vy >= 0) {
+          r.y = p.y - r.h;
+          r.vy = 0;
+          r.grounded = true;
+        }
+      }
+      if (r.y + r.h > groundY) { r.y = groundY - r.h; r.vy = 0; r.grounded = true; }
+      r.x = Math.max(0, Math.min(canvas.width - r.w, r.x));
+
+      // RETURN STATE trigger
+      if (state.handoffDone && !state.returnTriggered && r.hasBaton && rectIn(r, returnState)) {
+        state.returnTriggered = true;
+        state.combo = Math.max(state.combo, 2);
+        state.comboTimer = 180;
+      }
+
+      // GOAL
+      if (r.hasBaton && rectIn(r, goal)) endGame();
+    }
+
+    function endGame() {
+      state.running = false;
+      state.won = true;
+      const bonus = state.returnTriggered ? 100 : 0;
+      const perfectBonus = state.perfect ? 250 : 0;
+      const finalScore = Math.floor((1200 - state.time * 10) + state.combo * 50 + bonus + perfectBonus);
+      if (finalScore > state.best) {
+        state.best = finalScore;
+        localStorage.setItem('gct_best', state.best);
+      }
+      document.getElementById('overlay').innerHTML = `<h2>CROWN CLAIMED</h2><p>Time: ${state.time.toFixed(2)}s</p><p>Return state: ${state.returnTriggered ? '+100' : 'missed'}</p><p>Perfect run: ${state.perfect ? '+250' : 'no'}</p><p>Final score: <b>${finalScore}</b></p><p style="color:#8888aa;margin-top:1rem;">Press <b>R</b> to reset.</p>`;
+      document.getElementById('overlay').classList.remove('hidden');
+    }
+
+    function loop() {
+      if (!state.running) return;
+      state.time += 1 / 60;
+      if (state.comboTimer > 0) state.comboTimer--;
+      updateRunner(runnerA);
+      updateRunner(runnerB);
+      draw();
+      document.getElementById('ready').textContent = state.active;
+      document.getElementById('time').textContent = state.time.toFixed(2);
+      document.getElementById('best').textContent = state.best || '—';
+      requestAnimationFrame(loop);
+    }
+
+    // === DRAW HOOKS (replace these with art/music) ===
+    function draw() {
+      ctx.fillStyle = '#05050a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawBackground();
+      drawHandoffZone(handoffZone);
+      drawReturnState(returnState);
+      drawGoal(goal);
+      for (const p of platforms) drawPlatform(p);
+      drawRunner(runnerA);
+      drawRunner(runnerB);
+      drawCrumbTrail();
+      drawCombo();
+    }
+
+    function drawBackground() {
+      // Replace with parallax layers, cover art, or beat-reactive visuals.
+      const g = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      g.addColorStop(0, '#0b0b12');
+      g.addColorStop(1, '#1a1020');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawRunner(r) {
+      ctx.fillStyle = r.color;
+      ctx.shadowColor = r.color;
+      ctx.shadowBlur = 12;
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.shadowBlur = 0;
+      // Baton
+      if (r.hasBaton) {
+        ctx.strokeStyle = '#f7f709'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(r.x + r.w / 2, r.y + r.h / 2);
+        ctx.lineTo(r.x + r.w / 2 + 12, r.y - 8);
+        ctx.stroke();
+        ctx.fillStyle = '#f7f709';
+        ctx.beginPath(); ctx.arc(r.x + r.w / 2 + 12, r.y - 8, 4, 0, Math.PI * 2); ctx.fill();
+      }
+      // Active indicator
+      if (state.active === (r === runnerA ? 'A' : 'B')) {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
+      }
+    }
+
+    function drawPlatform(p) {
+      ctx.fillStyle = '#2a2a44';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = '#8aff5b'; ctx.lineWidth = 1;
+      ctx.strokeRect(p.x, p.y, p.w, p.h);
+    }
+
+    function drawHandoffZone(z) {
+      const pulse = 0.15 + Math.sin(Date.now() / 300) * 0.05;
+      ctx.fillStyle = `rgba(138,255,91,${pulse})`;
+      ctx.fillRect(z.x, z.y, z.w, z.h);
+      ctx.strokeStyle = '#8aff5b'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2;
+      ctx.strokeRect(z.x, z.y, z.w, z.h); ctx.setLineDash([]);
+      ctx.fillStyle = '#8aff5b'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(state.handoffDone ? 'HANDED OFF' : 'HANDOFF', z.x + z.w / 2, z.y + z.h / 2 + 4);
+    }
+
+    function drawReturnState(s) {
+      const lit = state.returnTriggered;
+      ctx.fillStyle = lit ? `rgba(247,201,92,${0.3 + Math.sin(Date.now()/200)*0.1})` : 'rgba(247,201,92,0.08)';
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeStyle = lit ? '#f7c95c' : '#555';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+      ctx.fillStyle = lit ? '#f7c95c' : '#555';
+      ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(lit ? 'HEARTH LIT' : 'HEARTH', s.x + s.w / 2, s.y + s.h / 2 + 4);
+    }
+
+    function drawGoal(g) {
+      ctx.fillStyle = `rgba(5,217,232,${0.2 + Math.sin(Date.now()/250)*0.08})`;
+      ctx.fillRect(g.x, g.y, g.w, g.h);
+      ctx.strokeStyle = '#05d9e8'; ctx.lineWidth = 2;
+      ctx.strokeRect(g.x, g.y, g.w, g.h);
+      ctx.fillStyle = '#05d9e8'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('GOAL', g.x + g.w / 2, g.y + g.h / 2 + 4);
+    }
+
+    function drawCrumbTrail() {
+      for (const c of crumbTrail) {
+        c.age++;
+        const alpha = Math.max(0, 1 - c.age / 180);
+        ctx.fillStyle = `rgba(247,201,92,${alpha})`;
+        ctx.beginPath(); ctx.arc(c.x, c.y, 2 + alpha * 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    function drawCombo() {
+      if (state.comboTimer <= 0) return;
+      ctx.fillStyle = '#f7c95c';
+      ctx.font = '12px monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(`CRUMB x${state.combo}`, 20, 40);
+      ctx.fillStyle = 'rgba(247,201,92,0.4)';
+      ctx.fillRect(20, 46, (state.comboTimer / 180) * 120, 6);
+    }
+
+    // init HUD best
+    document.getElementById('best').textContent = state.best || '—';
+  </script>
+</body>
+</html>
