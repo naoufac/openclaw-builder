@@ -51,13 +51,15 @@
       <h2>PIXEL RELAY v2</h2>
       <p>Runner A carries the baton from the left. Runner B waits on the right.</p>
       <p>Meet at the handoff zone to pass the baton. Reach the final goal together.</p>
+      <p>Avoid the spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT LAYER.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to swap runner in solo mode.</p>
       <button id="start">START RELAY</button>
     </div>
   </div>
   <div class="help">
-    <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone and press <b>Space</b> (or have Runner B touch A) to pass.
-    Then <b>Runner B (cyan)</b> carries it to the goal. Collect orbs for bonus time. Sprite hooks are ready for Hardy’s art pass.
+    <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone and press <b>Space</b> to pass.
+    Then <b>Runner B (cyan)</b> carries it to the goal. Clean handoff with no spike hits spawns a crescent bonus worth +5 seconds.
+    Sprite hooks are ready for Hardy’s pixel-art pass. Add-on idea: croissantman.
   </div>
 
   <script>
@@ -116,6 +118,35 @@
       ctx.fillText('GOAL', g.x + g.w/2, g.y + g.h/2 + 4);
     }
 
+    function drawHazard(h) {
+      ctx.fillStyle = '#ff2a6d';
+      for (let i = 0; i < h.w; i += 10) {
+        const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
+        ctx.beginPath();
+        ctx.moveTo(h.x + i, h.y + h.h);
+        ctx.lineTo(h.x + i + 5, h.y + h.h - spikeH);
+        ctx.lineTo(h.x + i + 10, h.y + h.h);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#000'; ctx.globalAlpha = 0.4;
+      ctx.fillRect(h.x, h.y, h.w, h.h/2);
+      ctx.globalAlpha = 1;
+    }
+
+    function drawCrescent(c) {
+      if (!c) return;
+      const pulse = 1 + Math.sin(Date.now()/200) * 0.15;
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.scale(pulse, pulse);
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0.4, Math.PI * 1.6, false);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
     function drawBackground() {
       ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, W, H);
       // distant city grid
@@ -129,13 +160,18 @@
       { name: 'B', x: 600, y: 240, w: 16, h: 24, color: '#05d9e8', vx: 0, vy: 0, onGround: false, hasBaton: false, active: false }
     ];
     let platforms = [];
+    let hazards = [];
     let orbs = [];
     let particles = [];
     let handoffZone = null;
     let goal = null;
+    let crescent = null;
     let timeLeft = 60, running = false, solo = true;
     let best = 0, won = false;
     let keys = {}, lastSwap = 0;
+    let perfectLayerFlash = 0;
+    let hitHazardThisRun = false;
+    let collected = 0;
 
     try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayV2Best') || '0', 10)); } catch (e) {}
     document.getElementById('best').textContent = best;
@@ -161,6 +197,10 @@
       if (inZone && a.hasBaton) {
         a.hasBaton = false; b.hasBaton = true; b.active = true; a.active = false;
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7f709');
+        // clean handoff reward: crescent baton appears above handoff zone
+        if (!hitHazardThisRun) {
+          crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 40, r: 12, active: true };
+        }
       } else if (solo) {
         // toggle active runner if both aren't in handoff zone
         a.active = !a.active; b.active = !b.active;
@@ -185,6 +225,11 @@
         { x: 600, y: 280, w: 120, h: 12 },
         { x: 540, y: 140, w: 120, h: 12 } // high goal platform
       ];
+      hazards = [
+        { x: 280, y: 340, w: 60, h: 20 }, // ground spikes between start and handoff
+        { x: 480, y: 340, w: 50, h: 20 }, // ground spikes before goal side
+        { x: 570, y: 120, w: 40, h: 20 }  // spikes under goal platform
+      ];
       handoffZone = { x: 335, y: 160, w: 70, h: 40 };
       goal = { x: 600, y: 100, w: 50, h: 40 };
       orbs = [
@@ -202,13 +247,15 @@
       runners[0].hasBaton = true; runners[0].active = true; runners[0].onGround = false;
       runners[1].x = 600; runners[1].y = 240; runners[1].vx = 0; runners[1].vy = 0;
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
-      particles = []; timeLeft = 60; won = false;
+      particles = []; timeLeft = 60; won = false; crescent = null; collected = 0;
+      hitHazardThisRun = false; perfectLayerFlash = 0;
       makeLevel(); updateHud();
     }
 
-    function spawnParticles(x, y, color) {
-      for (let i = 0; i < 10; i++) {
-        particles.push({ x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: 0.7, color });
+    function spawnParticles(x, y, color, crumb = false) {
+      const count = crumb ? 20 : 10;
+      for (let i = 0; i < count; i++) {
+        particles.push({ x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5, life: crumb ? 1.0 : 0.7, color, crumb });
       }
     }
 
@@ -270,13 +317,39 @@
         if (o.taken) continue;
         const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
         if (Math.hypot(cx - o.x, cy - o.y) < o.r + 12) {
-          o.taken = true; timeLeft += 3; spawnParticles(o.x, o.y, '#f7f709');
+          o.taken = true; collected++; timeLeft += 3; spawnParticles(o.x, o.y, '#f7f709');
         }
       }
 
-      // goal check
-      if (carrier.hasBaton && rectIntersectInflated(carrier, goal, 8)) {
-        won = true; endGame(true); return;
+      // crescent baton pickup
+      if (crescent && crescent.active && carrier) {
+        const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
+        if (Math.hypot(cx - crescent.x, cy - crescent.y) < crescent.r + 12) {
+          crescent.active = false; timeLeft += 5; perfectLayerFlash = 1.2;
+          spawnParticles(crescent.x, crescent.y, '#f7c95c', true);
+        }
+      }
+
+      // hazard collision
+      for (const h of hazards) {
+        const hurtBox = { x: h.x + 4, y: h.y + 8, w: h.w - 8, h: h.h - 8 };
+        for (const r of runners) {
+          if (rectIntersect(r, hurtBox)) {
+            hitHazardThisRun = true;
+            // knockback
+            r.vy = -6; r.vx = (r.x < h.x + h.w/2 ? -3 : 3);
+            r.y = h.y - r.h - 2;
+            spawnParticles(r.x + r.w/2, r.y + r.h, '#ff2a6d');
+          }
+        }
+      }
+
+      // golden crumb trail for collected crescent
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        if (p.crumb && Math.random() < 0.15) {
+          particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 0.4, color: '#f7c95c', crumb: false });
+        }
       }
 
       // particles
@@ -284,6 +357,13 @@
         const p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= dt;
         if (p.life <= 0) particles.splice(i, 1);
       }
+
+      // goal check
+      if (carrier.hasBaton && rectIntersectInflated(carrier, goal, 8)) {
+        won = true; endGame(true); return;
+      }
+
+      if (perfectLayerFlash > 0) perfectLayerFlash = Math.max(0, perfectLayerFlash - dt * 1.2);
 
       timeLeft -= dt;
       if (timeLeft <= 0) endGame(false);
@@ -306,7 +386,7 @@
         document.getElementById('best').textContent = best;
         overlay('RELAY COMPLETE', `Score: ${score} · Best: ${best}<br>Handoff clean, goal reached.`, 'RUN AGAIN');
       } else {
-        overlay('TIME UP', `Best: ${best}<br>Pass the baton and reach the goal together.`, 'TRY AGAIN');
+        overlay('TIME UP', `Orbs: ${collected}/${orbs.length} · Best: ${best}<br>Pass the baton and reach the goal together.`, 'TRY AGAIN');
       }
     }
 
@@ -321,14 +401,20 @@
     function draw() {
       drawBackground();
       platforms.forEach(drawPlatform);
+      hazards.forEach(drawHazard);
       if (handoffZone) drawHandoffZone(handoffZone);
       if (goal) drawGoal(goal);
       orbs.forEach(o => { if (!o.taken) drawOrb(o); });
+      if (crescent && crescent.active) drawCrescent(crescent);
       runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton));
       // particles
       for (const p of particles) {
         ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/0.7);
-        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        if (p.crumb) {
+          ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+        } else {
+          ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        }
       }
       ctx.globalAlpha = 1;
       // active marker
@@ -336,6 +422,13 @@
       if (active) {
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
         ctx.strokeRect(active.x - 3, active.y - 6, active.w + 6, active.h + 6);
+      }
+      // PERFECT LAYER flash
+      if (perfectLayerFlash > 0) {
+        ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 28px monospace'; ctx.textAlign = 'center';
+        ctx.fillText('PERFECT LAYER', W/2, H/2);
       }
     }
 
