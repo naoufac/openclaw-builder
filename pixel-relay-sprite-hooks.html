@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Relay — Sprite Hook Reference</title>
+  <style>
+    :root { --bg: #0b0b12; --panel: #161622; --accent: #8aff5b; --text: #e0e0f0; --muted: #8888aa; }
+    body { margin: 0; padding: 2rem; background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; }
+    h1 { color: var(--accent); text-shadow: 0 0 12px var(--accent); margin-top: 0; }
+    .sub { color: var(--muted); margin-bottom: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .card { background: var(--panel); border: 1px solid #2a2a44; padding: 1rem; }
+    .card h2 { color: var(--accent); margin: 0 0 0.5rem; font-size: 1.1rem; }
+    .card canvas { display: block; background: #05050a; border: 1px solid #2a2a44; image-rendering: pixelated; margin: 0.5rem 0; width: 100%; height: auto; }
+    .spec { color: var(--muted); font-size: 0.85rem; }
+    .spec b { color: var(--text); }
+    code { display: block; background: #05050a; padding: 0.6rem; border: 1px solid #2a2a44; color: #f7c95c; font-size: 0.8rem; margin-top: 0.5rem; white-space: pre-wrap; }
+    .back { display: inline-block; margin-top: 2rem; color: var(--accent); text-decoration: none; border: 1px solid var(--accent); padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>PIXEL RELAY — Sprite Hook Reference</h1>
+  <p class="sub">For Hardy’s pixel-art pass · replace the placeholder functions without touching physics</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Runner A (baton)</h2>
+      <canvas id="runner-a" width="80" height="120"></canvas>
+      <div class="spec"><b>Size:</b> 16×24 px · <b>Anchor:</b> top-left (x, y)<br><b>Variants:</b> idle, run-1, run-2, jump, baton-hold</div>
+      <code>drawRunner(x, y, w=16, h=24, color='#ff2a6d', hasBaton=true)</code>
+    </div>
+    <div class="card">
+      <h2>Runner B (no baton)</h2>
+      <canvas id="runner-b" width="80" height="120"></canvas>
+      <div class="spec"><b>Size:</b> 16×24 px · <b>Palette:</b> cyan (#05d9e8)<br><b>Eyes:</b> currently at (x+4, y+4) and (x+4, y+10)</div>
+      <code>drawRunner(x, y, w=16, h=24, color='#05d9e8', hasBaton=false)</code>
+    </div>
+    <div class="card">
+      <h2>Platform</h2>
+      <canvas id="platform" width="260" height="60"></canvas>
+      <div class="spec"><b>Ground:</b> 720×40 · <b>Small:</b> ~100×12 · <b>Goal platform:</b> ~120×12<br>Tile left/center/right 16×16 if desired.</div>
+      <code>drawPlatform({x, y, w, h})</code>
+    </div>
+    <div class="card">
+      <h2>Goal Gate</h2>
+      <canvas id="goal" width="160" height="140"></canvas>
+      <div class="spec"><b>Size:</b> 50×40 px · any shape inside bounding box</div>
+      <code>drawGoal({x, y, w=50, h=40})</code>
+    </div>
+    <div class="card">
+      <h2>Hazard Spikes</h2>
+      <canvas id="hazard" width="240" height="80"></canvas>
+      <div class="spec"><b>Box:</b> variable width × 20px tall · spikes render on top edge</div>
+      <code>drawHazard({x, y, w, h=20})</code>
+    </div>
+    <div class="card">
+      <h2>Orb / Butter Pearl</h2>
+      <canvas id="orb" width="80" height="80"></canvas>
+      <div class="spec"><b>Radius:</b> 5 px · glowing center + outer ring</div>
+      <code>drawOrb({x, y, r=5})</code>
+    </div>
+    <div class="card">
+      <h2>Crescent Bonus</h2>
+      <canvas id="crescent" width="100" height="100"></canvas>
+      <div class="spec"><b>Radius:</b> 10–13 px · warm gold (#f7c95c) · subtle shimmer</div>
+      <code>drawCrescent({x, y, r≈12})</code>
+    </div>
+    <div class="card">
+      <h2>Handoff Zone</h2>
+      <canvas id="handoff" width="180" height="120"></canvas>
+      <div class="spec"><b>Box:</b> 70×50 px · dashed border + label</div>
+      <code>drawHandoffZone({x, y, w=70, h=50})</code>
+    </div>
+  </div>
+
+  <a class="back" href="https://naoufac.github.io/openclaw-builder/pixel-relay-v2.html">← Play Pixel Relay v2.3</a>
+  <a class="back" href="https://naoufac.github.io/openclaw-builder/pixel-relay-croissant-nation.html">Play Croissant Nation →</a>
+
+  <script>
+    function ctx2d(id) { return document.getElementById(id).getContext('2d'); }
+
+    function drawRunner(ctx, x, y, w, h, color, hasBaton) {
+      ctx.fillStyle = color;
+      ctx.shadowColor = color; ctx.shadowBlur = 12;
+      ctx.fillRect(x, y, w, h);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x + 4, y + 4, 3, 3);
+      ctx.fillRect(x + 4, y + 10, 3, 3);
+      if (hasBaton) {
+        ctx.strokeStyle = '#f7f709'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + w/2, y + h/2); ctx.lineTo(x + w/2 + 12, y - 8); ctx.stroke();
+        ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(x + w/2 + 12, y - 8, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    function drawPlatform(ctx, p) {
+      ctx.fillStyle = '#2a2a44';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.strokeStyle = '#8aff5b'; ctx.lineWidth = 1;
+      ctx.strokeRect(p.x, p.y, p.w, p.h);
+    }
+
+    function drawOrb(ctx, o) {
+      ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawHandoffZone(ctx, z) {
+      ctx.fillStyle = `rgba(138,255,91,${0.15 + Math.sin(Date.now()/300)*0.05})`;
+      ctx.fillRect(z.x, z.y, z.w, z.h);
+      ctx.strokeStyle = '#8aff5b'; ctx.setLineDash([6,6]); ctx.lineWidth = 2;
+      ctx.strokeRect(z.x, z.y, z.w, z.h); ctx.setLineDash([]);
+      ctx.fillStyle = '#8aff5b'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('HANDOFF', z.x + z.w/2, z.y + z.h/2 + 4);
+    }
+
+    function drawGoal(ctx, g) {
+      ctx.fillStyle = `rgba(5,217,232,${0.2 + Math.sin(Date.now()/250)*0.08})`;
+      ctx.fillRect(g.x, g.y, g.w, g.h);
+      ctx.strokeStyle = '#05d9e8'; ctx.lineWidth = 2;
+      ctx.strokeRect(g.x, g.y, g.w, g.h);
+      ctx.fillStyle = '#05d9e8'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('GOAL', g.x + g.w/2, g.y + g.h/2 + 4);
+    }
+
+    function drawHazard(ctx, h) {
+      ctx.fillStyle = '#ff2a6d';
+      for (let i = 0; i < h.w; i += 10) {
+        const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
+        ctx.beginPath();
+        ctx.moveTo(h.x + i, h.y + h.h);
+        ctx.lineTo(h.x + i + 5, h.y + h.h - spikeH);
+        ctx.lineTo(h.x + i + 10, h.y + h.h);
+        ctx.fill();
+      }
+    }
+
+    function drawCrescent(ctx, c) {
+      const pulse = 1 + Math.sin(Date.now()/200) * 0.15;
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.scale(pulse, pulse);
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0.4, Math.PI * 1.6, false);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    function render() {
+      const scale = 4;
+      // runner A
+      let c = ctx2d('runner-a'); c.clearRect(0,0,80,120); c.save(); c.scale(scale, scale);
+      drawRunner(c, 4, 4, 16, 24, '#ff2a6d', true); c.restore();
+      // runner B
+      c = ctx2d('runner-b'); c.clearRect(0,0,80,120); c.save(); c.scale(scale, scale);
+      drawRunner(c, 4, 4, 16, 24, '#05d9e8', false); c.restore();
+      // platform
+      c = ctx2d('platform'); c.clearRect(0,0,260,60);
+      drawPlatform(c, {x:10, y:30, w:240, h:12});
+      // goal
+      c = ctx2d('goal'); c.clearRect(0,0,160,140); c.save(); c.scale(2,2);
+      drawGoal(c, {x:15, y:15, w:50, h:40}); c.restore();
+      // hazard
+      c = ctx2d('hazard'); c.clearRect(0,0,240,80);
+      drawHazard(c, {x:10, y:50, w:220, h:20});
+      // orb
+      c = ctx2d('orb'); c.clearRect(0,0,80,80); c.save(); c.scale(4,4);
+      drawOrb(c, {x:10, y:10, r:5}); c.restore();
+      // crescent
+      c = ctx2d('crescent'); c.clearRect(0,0,100,100); c.save(); c.scale(3,3);
+      drawCrescent(c, {x:16, y:16}); c.restore();
+      // handoff
+      c = ctx2d('handoff'); c.clearRect(0,0,180,120); c.save(); c.scale(2,2);
+      drawHandoffZone(c, {x:10, y:10, w:70, h:50}); c.restore();
+      requestAnimationFrame(render);
+    }
+    render();
+  </script>
+</body>
+</html>
