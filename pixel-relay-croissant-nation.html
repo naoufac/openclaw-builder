@@ -3,65 +3,62 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Relay v2 — openclaw-builder & Hardy</title>
+  <title>Pixel Relay: Croissant Nation — Golden Baton Trial</title>
   <style>
-    :root { --bg: #0b0b12; --panel: #161622; --p1: #ff2a6d; --p2: #05d9e8; --accent: #8aff5b; --text: #e0e0f0; }
+    :root { --bg: #1a1410; --panel: #2b2018; --p1: #e8a838; --p2: #f7c95c; --accent: #d4a574; --text: #f5e6d3; }
     body {
       margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
       font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center;
     }
     h1 { margin: 1rem 0 0.2rem; color: var(--accent); text-shadow: 0 0 12px var(--accent); }
-    .sub { color: #8888aa; margin-bottom: 0.8rem; font-size: 0.9rem; }
-    #wrap { border: 2px solid var(--accent); box-shadow: 0 0 20px rgba(138,255,91,0.25); position: relative; }
-    canvas { display: block; image-rendering: pixelated; background: #05050a; }
+    .sub { color: #a68a6d; margin-bottom: 0.8rem; font-size: 0.9rem; }
+    #wrap { border: 2px solid var(--accent); box-shadow: 0 0 20px rgba(212,165,116,0.25); position: relative; }
+    canvas { display: block; image-rendering: pixelated; background: #120e0b; }
     #hud {
       width: 720px; display: flex; justify-content: space-between; margin: 0.6rem 0; font-size: 0.95rem;
     }
-    #hud span { padding: 0.3rem 0.8rem; background: var(--panel); border: 1px solid #2a2a44; white-space: nowrap; }
+    #hud span { padding: 0.3rem 0.8rem; background: var(--panel); border: 1px solid #4a3b2e; white-space: nowrap; }
     .p1 { color: var(--p1); border-color: var(--p1); }
     .p2 { color: var(--p2); border-color: var(--p2); }
     #overlay {
       position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; background: rgba(5,5,10,0.92); text-align: center;
+      align-items: center; justify-content: center; background: rgba(18,14,11,0.95); text-align: center;
     }
     #overlay h2 { color: var(--accent); margin: 0 0 1rem; text-shadow: 0 0 10px var(--accent); }
-    #overlay p { max-width: 380px; margin: 0.3rem 0; }
+    #overlay p { max-width: 420px; margin: 0.3rem 0; }
     #overlay button {
       margin-top: 1rem; padding: 0.7rem 1.5rem; background: var(--accent); color: #000;
       border: none; font-weight: bold; font-family: inherit; cursor: pointer; box-shadow: 0 0 14px var(--accent);
     }
-    #overlay button:hover { background: #aaff80; }
-    .help { width: 720px; font-size: 0.85rem; color: #8888aa; margin-bottom: 1.5rem; }
+    #overlay button:hover { background: #e8c090; }
+    .help { width: 720px; font-size: 0.85rem; color: #a68a6d; margin-bottom: 1.5rem; }
     .help b { color: var(--text); }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
-  <h1>PIXEL RELAY v2.3</h1>
-  <p class="sub">Two runners, one baton, handoffs · openclaw-builder + Hardy</p>
+  <h1>PIXEL RELAY: CROISSANT NATION</h1>
+  <p class="sub">Golden Baton Trial · openclaw-builder & croissantman</p>
   <div id="hud">
-    <span class="p1">RUNNER A: <b id="s1">ready</b></span>
-    <span>TIME: <b id="time">60</b></span>
+    <span class="p1">BAKER A: <b id="s1">ready</b></span>
+    <span>TIME: <b id="time">70</b></span>
     <span>BEST: <b id="best">0</b></span>
-    <span class="p2">RUNNER B: <b id="s2">idle</b></span>
+    <span class="p2">BAKER B: <b id="s2">idle</b></span>
   </div>
   <div id="wrap">
     <canvas id="game" width="720" height="400"></canvas>
     <div id="overlay">
-      <h2>PIXEL RELAY v2</h2>
-      <p>Runner A carries the baton from the left. Runner B waits on the right.</p>
-      <p>Meet at the handoff zone to pass the baton. Reach the goal with the baton carrier.</p>
-      <p>Avoid spikes. Clean handoff spawns a crescent bonus · +5s and PERFECT RUN.</p>
-      <p>Chain crescent pickups for a CRUMB COMBO before finishing.</p>
-      <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap runner · H to handoff when both runners are in the zone.</p>
-      <button id="start">START RELAY</button>
+      <h2>GOLDEN BATON TRIAL</h2>
+      <p>Keep the baton warm. Pass clean. Chain the crumbs. Crown the run.</p>
+      <p>Baker A carries the golden baton from the Cold Oven. Baker B waits beyond the Handoff Hearth.</p>
+      <p>Clean handoff in the oven arch bakes a Golden Crescent. Chain them before time cools.</p>
+      <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap baker · H to handoff in arch</p>
+      <button id="start">ENTER THE OVEN</button>
     </div>
   </div>
   <div class="help">
-    <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone with both runners and press <b>H</b> to pass.
-    Then <b>Runner B (cyan)</b> carries it to the goal. Clean handoff with no spike hits spawns a crescent bonus worth +5 seconds.
-    Chain crescent pickups for a CRUMB COMBO and aim for a PERFECT RUN (all orbs, no spikes) for +250.
-    Sprite hooks are ready for Hardy’s pixel-art pass. Add-on idea: croissantman.
+    <b>Croissant Nation rules:</b> Hit no <b>cooling spikes</b>. Collect every <b>butter pearl</b>. Hand off clean inside the <b>oven arch</b> with <b>H</b>.
+    Golden crescents appear only after a clean handoff. Chain them for a CRUMB CROWN. Perfect run = all pearls + no spikes + crown finish.
   </div>
 
   <script>
@@ -70,58 +67,73 @@
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.55, JUMP = -10.5, SPEED = 4, FRICTION = 0.78;
 
-    // sprite hooks: swap these render calls for actual pixel art later
+    // pastry palette sprite hooks
     function drawRunner(x, y, w, h, color, hasBaton) {
       ctx.fillStyle = color;
-      ctx.shadowColor = color; ctx.shadowBlur = 12;
+      ctx.shadowColor = color; ctx.shadowBlur = 10;
       ctx.fillRect(x, y, w, h);
       ctx.shadowBlur = 0;
-      // eyes
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + (w > h ? w - 6 : 4), y + 4, 3, 3);
-      ctx.fillRect(x + (w > h ? w - 6 : 4), y + 10, 3, 3);
+      // toque / band
+      ctx.fillStyle = '#fff8ee';
+      ctx.fillRect(x + 2, y + 2, w - 4, 4);
+      ctx.fillStyle = '#2b2018';
+      ctx.fillRect(x + 4, y + 10, 3, 3);
+      ctx.fillRect(x + w - 7, y + 10, 3, 3);
       if (hasBaton) {
-        ctx.strokeStyle = '#f7f709'; ctx.lineWidth = 2;
+        ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(x + w/2, y + h/2); ctx.lineTo(x + w/2 + 12, y - 8); ctx.stroke();
-        ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 8;
+        ctx.fillStyle = '#f7c95c'; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 8;
         ctx.beginPath(); ctx.arc(x + w/2 + 12, y - 8, 4, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
 
     function drawPlatform(p) {
-      ctx.fillStyle = '#2a2a44';
+      ctx.fillStyle = '#5c4a3a';
       ctx.fillRect(p.x, p.y, p.w, p.h);
-      ctx.strokeStyle = '#8aff5b'; ctx.lineWidth = 1;
+      ctx.strokeStyle = '#d4a574'; ctx.lineWidth = 1;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
+      // brick detail
+      ctx.fillStyle = 'rgba(18,14,11,0.25)';
+      for (let i = p.x + 6; i < p.x + p.w; i += 18) ctx.fillRect(i, p.y + 2, 2, p.h - 4);
     }
 
     function drawOrb(o) {
-      ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 10;
+      ctx.fillStyle = '#fff8ee'; ctx.shadowColor = '#fff8ee'; ctx.shadowBlur = 8;
       ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
+      ctx.fillStyle = '#f7c95c';
+      ctx.beginPath(); ctx.arc(o.x - 1, o.y - 1, o.r/2, 0, Math.PI * 2); ctx.fill();
     }
 
-    function drawHandoffZone(z) {
-      ctx.fillStyle = `rgba(138,255,91,${0.15 + Math.sin(Date.now()/300)*0.05})`;
+    function drawHandoffZone(z, clean) {
+      ctx.fillStyle = clean ? `rgba(247,201,92,${0.18 + Math.sin(Date.now()/300)*0.06})` : `rgba(212,165,116,${0.12 + Math.sin(Date.now()/300)*0.04})`;
       ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.strokeStyle = '#8aff5b'; ctx.setLineDash([6,6]); ctx.lineWidth = 2;
+      ctx.strokeStyle = clean ? '#f7c95c' : '#d4a574'; ctx.setLineDash([6,6]); ctx.lineWidth = 2;
       ctx.strokeRect(z.x, z.y, z.w, z.h); ctx.setLineDash([]);
-      ctx.fillStyle = '#8aff5b'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('HANDOFF', z.x + z.w/2, z.y + z.h/2 + 4);
+      ctx.fillStyle = clean ? '#f7c95c' : '#d4a574'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('OVEN ARCH', z.x + z.w/2, z.y + z.h/2 + 4);
     }
 
     function drawGoal(g) {
-      ctx.fillStyle = `rgba(5,217,232,${0.2 + Math.sin(Date.now()/250)*0.08})`;
+      ctx.fillStyle = `rgba(247,201,92,${0.2 + Math.sin(Date.now()/250)*0.08})`;
       ctx.fillRect(g.x, g.y, g.w, g.h);
-      ctx.strokeStyle = '#05d9e8'; ctx.lineWidth = 2;
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
       ctx.strokeRect(g.x, g.y, g.w, g.h);
-      ctx.fillStyle = '#05d9e8'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('GOAL', g.x + g.w/2, g.y + g.h/2 + 4);
+      // croissant crown shape
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(g.x + g.w/2 - 12, g.y + g.h/2, 10, 0.8, Math.PI * 1.4, false);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(g.x + g.w/2 + 12, g.y + g.h/2, 10, Math.PI * 0.6, Math.PI * 1.2, true);
+      ctx.stroke();
+      ctx.fillStyle = '#f7c95c'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('CROWN', g.x + g.w/2, g.y + g.h - 4);
     }
 
     function drawHazard(h) {
-      ctx.fillStyle = '#ff2a6d';
+      ctx.fillStyle = '#8a9aa8';
       for (let i = 0; i < h.w; i += 10) {
         const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
         ctx.beginPath();
@@ -130,36 +142,44 @@
         ctx.lineTo(h.x + i + 10, h.y + h.h);
         ctx.fill();
       }
-      ctx.fillStyle = '#000'; ctx.globalAlpha = 0.4;
-      ctx.fillRect(h.x, h.y, h.w, h.h/2);
-      ctx.globalAlpha = 1;
+      // cooling rack bars
+      ctx.strokeStyle = '#4a5a66'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(h.x, h.y + 6); ctx.lineTo(h.x + h.w, h.y + 6); ctx.stroke();
     }
 
     function drawCrescent(c) {
       if (!c) return;
-      const pulse = 1 + Math.sin(Date.now()/200) * 0.15;
+      const pulse = 1 + Math.sin(Date.now()/180) * 0.12;
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.scale(pulse, pulse);
-      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 4; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(0, 0, 10, 0.4, Math.PI * 1.6, false);
+      ctx.arc(0, 0, 11, 0.35, Math.PI * 1.65, false);
       ctx.stroke();
+      ctx.fillStyle = '#f7c95c';
+      ctx.beginPath(); ctx.arc(-4, -6, 2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(5, 5, 1.5, 0, Math.PI*2); ctx.fill();
       ctx.shadowBlur = 0;
       ctx.restore();
     }
 
     function drawBackground() {
-      ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, W, H);
-      // distant city grid
-      ctx.strokeStyle = '#151525'; ctx.lineWidth = 1;
+      ctx.fillStyle = '#120e0b'; ctx.fillRect(0, 0, W, H);
+      // warm parchment grid
+      ctx.strokeStyle = '#251e17'; ctx.lineWidth = 1;
       for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       for (let y = 0; y <= H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      // distant oven glow
+      const glow = ctx.createRadialGradient(W/2, H - 40, 10, W/2, H - 40, 220);
+      glow.addColorStop(0, 'rgba(232,168,56,0.08)');
+      glow.addColorStop(1, 'rgba(18,14,11,0)');
+      ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
     }
 
     const runners = [
-      { name: 'A', x: 30, y: 240, w: 16, h: 24, color: '#ff2a6d', vx: 0, vy: 0, onGround: false, hasBaton: true, active: true },
-      { name: 'B', x: 660, y: 190, w: 16, h: 24, color: '#05d9e8', vx: 0, vy: 0, onGround: false, hasBaton: false, active: false }
+      { name: 'A', x: 30, y: 300, w: 16, h: 24, color: '#e8a838', vx: 0, vy: 0, onGround: false, hasBaton: true, active: true },
+      { name: 'B', x: 640, y: 180, w: 16, h: 24, color: '#f7c95c', vx: 0, vy: 0, onGround: false, hasBaton: false, active: false }
     ];
     let platforms = [];
     let hazards = [];
@@ -168,7 +188,7 @@
     let handoffZone = null;
     let goal = null;
     let crescent = null;
-    let timeLeft = 60, running = false, solo = true;
+    let timeLeft = 70, running = false, solo = true;
     let best = 0, won = false;
     let keys = {}, lastSwap = 0;
     let perfectLayerFlash = 0;
@@ -176,7 +196,7 @@
     let collected = 0;
     let comboCount = 0, comboTimer = 0, comboMax = 4, comboActive = false;
 
-    try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayV2Best') || '0', 10)); } catch (e) {}
+    try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayCroissantBest') || '0', 10)); } catch (e) {}
     document.getElementById('best').textContent = best;
 
     window.addEventListener('keydown', e => {
@@ -200,10 +220,9 @@
       const inZone = rectIntersectInflated(a, handoffZone, 4) && rectIntersectInflated(b, handoffZone, 4);
       if (inZone && a.hasBaton) {
         a.hasBaton = false; b.hasBaton = true; b.active = true; a.active = false;
-        spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7f709');
-        // clean handoff reward: crescent baton appears above handoff zone
+        spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c');
         if (!hitHazardThisRun) {
-          crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 40, r: 12, active: true };
+          crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 45, r: 13, active: true };
         }
       }
       lastSwap = now;
@@ -211,10 +230,9 @@
 
     function tryToggleRunner() {
       if (!running) return;
-      // Space toggles active runner when not in handoff zone
       const [a, b] = runners;
       const inZone = handoffZone && rectIntersectInflated(a, handoffZone, 4) && rectIntersectInflated(b, handoffZone, 4);
-      if (inZone) return; // let H handle handoff
+      if (inZone) return;
       a.active = !a.active; b.active = !b.active;
     }
 
@@ -226,41 +244,47 @@
     }
 
     function makeLevel() {
+      // Cold Oven Start (left low), Butter Ramp ascending, Handoff Hearth center, B-side Lamination upper/right, Crown Finish top
       platforms = [
-        { x: 0, y: 360, w: 720, h: 40 }, // ground
-        { x: 0, y: 280, w: 140, h: 12 },
-        { x: 180, y: 240, w: 100, h: 12 },
-        { x: 320, y: 200, w: 100, h: 12 }, // near handoff
-        { x: 460, y: 260, w: 90, h: 12 },
-        { x: 580, y: 300, w: 100, h: 12 },
-        { x: 660, y: 240, w: 60, h: 12 },
-        { x: 560, y: 160, w: 120, h: 12 } // high goal platform
+        { x: 0, y: 360, w: 180, h: 40 }, // cold oven floor
+        { x: 0, y: 300, w: 90, h: 12 },
+        { x: 110, y: 260, w: 80, h: 12 }, // butter ramp 1
+        { x: 220, y: 230, w: 70, h: 12 }, // ramp 2
+        { x: 320, y: 210, w: 100, h: 12 }, // handoff hearth platform
+        { x: 460, y: 240, w: 70, h: 12 }, // B-side lamination start
+        { x: 560, y: 200, w: 70, h: 12 },
+        { x: 640, y: 220, w: 80, h: 12 }, // B recovery / start platform
+        { x: 180, y: 360, w: 540, h: 40 }, // lower kitchen floor continues
+        { x: 500, y: 130, w: 120, h: 12 }, // proofing gap high path
+        { x: 350, y: 110, w: 100, h: 12 }  // crown finish platform
       ];
       hazards = [
-        { x: 280, y: 340, w: 60, h: 20 }, // ground spikes between start and handoff
-        { x: 420, y: 340, w: 70, h: 20 }, // ground spikes before goal side
-        { x: 590, y: 340, w: 80, h: 20 }, // spikes under B-side platforms
-        { x: 560, y: 140, w: 40, h: 20 }  // spikes under goal platform
+        { x: 190, y: 340, w: 120, h: 20 }, // cooling spikes under ramp
+        { x: 360, y: 340, w: 80, h: 20 }, // spikes before handoff
+        { x: 540, y: 340, w: 100, h: 20 }, // spikes under B-side
+        { x: 450, y: 90, w: 40, h: 20 }   // spikes under crown
       ];
-      handoffZone = { x: 335, y: 160, w: 70, h: 40 };
-      goal = { x: 620, y: 120, w: 50, h: 40 };
+      handoffZone = { x: 335, y: 160, w: 70, h: 50 };
+      goal = { x: 375, y: 60, w: 50, h: 50 };
       orbs = [
-        { x: 90, y: 255, r: 5, taken: false },
-        { x: 230, y: 215, r: 5, taken: false },
-        { x: 365, y: 180, r: 5, taken: false },
-        { x: 505, y: 240, r: 5, taken: false },
-        { x: 630, y: 280, r: 5, taken: false },
-        { x: 690, y: 220, r: 5, taken: false },
-        { x: 620, y: 135, r: 5, taken: false }
+        { x: 45, y: 280, r: 5, taken: false },
+        { x: 140, y: 235, r: 5, taken: false },
+        { x: 255, y: 205, r: 5, taken: false },
+        { x: 370, y: 185, r: 5, taken: false },
+        { x: 495, y: 215, r: 5, taken: false },
+        { x: 595, y: 175, r: 5, taken: false },
+        { x: 680, y: 195, r: 5, taken: false },
+        { x: 560, y: 110, r: 5, taken: false },
+        { x: 400, y: 90, r: 5, taken: false }
       ];
     }
 
     function resetLevel() {
-      runners[0].x = 30; runners[0].y = 240; runners[0].vx = 0; runners[0].vy = 0;
+      runners[0].x = 30; runners[0].y = 300; runners[0].vx = 0; runners[0].vy = 0;
       runners[0].hasBaton = true; runners[0].active = true; runners[0].onGround = false;
-      runners[1].x = 660; runners[1].y = 190; runners[1].vx = 0; runners[1].vy = 0;
+      runners[1].x = 640; runners[1].y = 180; runners[1].vx = 0; runners[1].vy = 0;
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
-      particles = []; timeLeft = 60; won = false; crescent = null; collected = 0;
+      particles = []; timeLeft = 70; won = false; crescent = null; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0;
       comboCount = 0; comboTimer = 0; comboActive = false;
       makeLevel(); updateHud();
@@ -312,11 +336,9 @@
     function update(dt) {
       runners.forEach(r => { control(r); updatePhysics(r); });
 
-      // baton carrier must be active in solo unless both in handoff zone
       if (solo) {
         const carrier = runners.find(r => r.hasBaton);
         if (carrier && !carrier.active) {
-          // if handoff not possible, force carrier active
           const other = runners.find(r => r !== carrier);
           if (!rectIntersectInflated(carrier, handoffZone, 4) || !rectIntersectInflated(other, handoffZone, 4)) {
             runners.forEach(r => r.active = false);
@@ -325,17 +347,15 @@
         }
       }
 
-      // collect orbs
       const carrier = runners.find(r => r.hasBaton) || runners[0];
       for (const o of orbs) {
         if (o.taken) continue;
         const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
         if (Math.hypot(cx - o.x, cy - o.y) < o.r + 12) {
-          o.taken = true; collected++; timeLeft += 3; spawnParticles(o.x, o.y, '#f7f709');
+          o.taken = true; collected++; timeLeft += 3; spawnParticles(o.x, o.y, '#fff8ee');
         }
       }
 
-      // crescent baton pickup
       if (crescent && crescent.active && carrier) {
         const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
         if (Math.hypot(cx - crescent.x, cy - crescent.y) < crescent.r + 12) {
@@ -345,21 +365,18 @@
         }
       }
 
-      // hazard collision
       for (const h of hazards) {
         const hurtBox = { x: h.x + 4, y: h.y + 8, w: h.w - 8, h: h.h - 8 };
         for (const r of runners) {
           if (rectIntersect(r, hurtBox)) {
             hitHazardThisRun = true;
-            // knockback
             r.vy = -6; r.vx = (r.x < h.x + h.w/2 ? -3 : 3);
             r.y = h.y - r.h - 2;
-            spawnParticles(r.x + r.w/2, r.y + r.h, '#ff2a6d');
+            spawnParticles(r.x + r.w/2, r.y + r.h, '#8a9aa8');
           }
         }
       }
 
-      // golden crumb trail for collected crescent
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         if (p.crumb && Math.random() < 0.15) {
@@ -367,20 +384,17 @@
         }
       }
 
-      // particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= dt;
         if (p.life <= 0) particles.splice(i, 1);
       }
 
-      // goal check
       if (carrier.hasBaton && rectIntersectInflated(carrier, goal, 8)) {
         won = true; endGame(true); return;
       }
 
       if (perfectLayerFlash > 0) perfectLayerFlash = Math.max(0, perfectLayerFlash - dt * 1.2);
 
-      // crumb combo decay
       if (comboActive) {
         comboTimer -= dt;
         if (comboTimer <= 0) { comboActive = false; comboCount = 0; }
@@ -401,19 +415,19 @@
     function endGame(win) {
       running = false;
       if (win) {
-        const baseScore = Math.ceil(timeLeft * 15) + 300;
-        const comboBonus = comboActive ? comboCount * 50 : 0;
-        const perfectBonus = (!hitHazardThisRun && collected === orbs.length) ? 250 : 0;
+        const baseScore = Math.ceil(timeLeft * 15) + 350;
+        const comboBonus = comboActive ? comboCount * 60 : 0;
+        const perfectBonus = (!hitHazardThisRun && collected === orbs.length) ? 300 : 0;
         const score = baseScore + comboBonus + perfectBonus;
         best = Math.max(best, score);
-        try { localStorage.setItem('pixelRelayV2Best', best.toString()); } catch (e) {}
+        try { localStorage.setItem('pixelRelayCroissantBest', best.toString()); } catch (e) {}
         document.getElementById('best').textContent = best;
-        let victoryText = `Score: ${score} · Best: ${best}<br>Handoff clean, goal reached.`;
-        if (comboActive) victoryText += `<br>Crumb combo x${comboCount} +${comboBonus}`;
-        if (perfectBonus) victoryText += `<br>PERFECT RUN +250`;
-        overlay('RELAY COMPLETE', victoryText, 'RUN AGAIN');
+        let victoryText = `Score: ${score} · Best: ${best}<br>Baton warm, crown claimed.`;
+        if (comboActive) victoryText += `<br>Crumb Crown x${comboCount} +${comboBonus}`;
+        if (perfectBonus) victoryText += `<br>CROISSANT NATION PERFECT RUN +300`;
+        overlay('CROWN CLAIMED', victoryText, 'BAKE AGAIN');
       } else {
-        overlay('TIME UP', `Orbs: ${collected}/${orbs.length} · Best: ${best}<br>Pass the baton and reach the goal together.`, 'TRY AGAIN');
+        overlay('OVEN COOLED', `Pearls: ${collected}/${orbs.length} · Best: ${best}<br>Keep the baton warm and reach the crown.`, 'TRY AGAIN');
       }
     }
 
@@ -428,20 +442,18 @@
     function drawCombo() {
       if (!comboActive) return;
       ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
-      ctx.fillText(`CRUMB CHAIN x${comboCount}`, 16, 30);
-      // combo bar
+      ctx.fillText(`CRUMB CROWN x${comboCount}`, 16, 30);
       ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
       ctx.strokeRect(16, 36, 120, 8);
       ctx.fillStyle = `rgba(247, 201, 92, ${0.4 + Math.sin(Date.now()/120)*0.2})`;
       ctx.fillRect(18, 38, 116 * (comboTimer / comboMax), 4);
     }
 
-    function drawVictoryConfetti() {
+    function drawVictoryGlow() {
       if (!won) return;
-      // animated background glow behind overlay
       const grad = ctx.createRadialGradient(W/2, H/2, 20, W/2, H/2, 300);
-      grad.addColorStop(0, 'rgba(138,255,91,0.35)');
-      grad.addColorStop(1, 'rgba(5,5,10,0)');
+      grad.addColorStop(0, 'rgba(247,201,92,0.35)');
+      grad.addColorStop(1, 'rgba(18,14,11,0)');
       ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
     }
 
@@ -449,30 +461,24 @@
       drawBackground();
       platforms.forEach(drawPlatform);
       hazards.forEach(drawHazard);
-      if (handoffZone) drawHandoffZone(handoffZone);
+      if (handoffZone) drawHandoffZone(handoffZone, !hitHazardThisRun);
       if (goal) drawGoal(goal);
       orbs.forEach(o => { if (!o.taken) drawOrb(o); });
       if (crescent && crescent.active) drawCrescent(crescent);
       runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton));
-      // particles
       for (const p of particles) {
         ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/0.7);
-        if (p.crumb) {
-          ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
-        } else {
-          ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-        }
+        if (p.crumb) ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+        else ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
       }
       ctx.globalAlpha = 1;
-      // active marker
       const active = runners.find(r => r.active);
       if (active) {
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.strokeStyle = '#fff8ee'; ctx.lineWidth = 1;
         ctx.strokeRect(active.x - 3, active.y - 6, active.w + 6, active.h + 6);
       }
       drawCombo();
-      drawVictoryConfetti();
-      // PERFECT RUN flash
+      drawVictoryGlow();
       if (perfectLayerFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
         ctx.fillRect(0, 0, W, H);
