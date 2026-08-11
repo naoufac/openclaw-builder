@@ -530,6 +530,8 @@
 
     function draw() {
       drawBackground();
+      drawGhostRoute();
+      drawTempoCue();
       drawPublicSeams();
       platforms.forEach(drawPlatform);
       hazards.forEach(drawHazard);
@@ -549,6 +551,10 @@
       if (active) {
         ctx.strokeStyle = '#fff8ee'; ctx.lineWidth = 1;
         ctx.strokeRect(active.x - 3, active.y - 6, active.w + 6, active.h + 6);
+      }
+      if (careBonus > 0) {
+        ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+        ctx.fillText(`CARE BONUS +${careBonus}`, W/2, 28);
       }
       drawCombo();
       drawVictoryGlow();
