@@ -72,41 +72,108 @@
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.55, JUMP = -10.5, SPEED = 4, FRICTION = 0.78;
 
+    // sprite manifest — replace public_url values with Hardy's Pixel Atelier artifact links
+    const SPRITES = {
+      runner_a_idle: null,
+      runner_a_run1: null,
+      runner_a_run2: null,
+      runner_a_jump: null,
+      runner_b_idle: null,
+      runner_b_run1: null,
+      runner_b_run2: null,
+      runner_b_jump: null,
+      platform: null,
+      hazard_spike: null,
+      orb: null,
+      crescent: null,
+      goal: null,
+      handoff_zone: null,
+      background: null
+    };
+    const IMAGES = {};
+    let spritesLoaded = false;
+
+    function loadSprites(manifest) {
+      const keys = Object.keys(manifest);
+      let pending = keys.length;
+      if (!pending) return;
+      keys.forEach(k => {
+        const url = manifest[k];
+        if (!url) { if (--pending === 0) spritesLoaded = true; return; }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { IMAGES[k] = img; if (--pending === 0) spritesLoaded = true; };
+        img.onerror = () => { if (--pending === 0) spritesLoaded = true; };
+        img.src = url;
+      });
+    }
+
     // sprite hooks: swap these render calls for actual pixel art later
-    function drawRunner(x, y, w, h, color, hasBaton) {
-      ctx.fillStyle = color;
-      ctx.shadowColor = color; ctx.shadowBlur = 12;
-      ctx.fillRect(x, y, w, h);
-      ctx.shadowBlur = 0;
-      // eyes
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + (w > h ? w - 6 : 4), y + 4, 3, 3);
-      ctx.fillRect(x + (w > h ? w - 6 : 4), y + 10, 3, 3);
+    function drawRunner(x, y, w, h, color, hasBaton, runner) {
+      const frameKey = runner && runner.name === 'B' ? 'runner_b' : 'runner_a';
+      let frame = frameKey + '_idle';
+      if (runner && !runner.onGround) frame = frameKey + '_jump';
+      else if (runner && Math.abs(runner.vx) > 0.5) frame = frameKey + ((Date.now() % 400 < 200) ? '_run1' : '_run2');
+      if (IMAGES[frame]) {
+        ctx.save();
+        const scale = Math.min(w / IMAGES[frame].naturalWidth, h / IMAGES[frame].naturalHeight) || 1;
+        const dw = IMAGES[frame].naturalWidth * scale;
+        const dh = IMAGES[frame].naturalHeight * scale;
+        ctx.translate(x + w/2, y + h/2);
+        if (runner && runner.vx < -0.5) ctx.scale(-1, 1);
+        ctx.drawImage(IMAGES[frame], -dw/2, -dh/2, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = color;
+        ctx.shadowColor = color; ctx.shadowBlur = 12;
+        ctx.fillRect(x, y, w, h);
+        ctx.shadowBlur = 0;
+        // eyes
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(x + (w > h ? w - 6 : 4), y + 4, 3, 3);
+        ctx.fillRect(x + (w > h ? w - 6 : 4), y + 10, 3, 3);
+      }
       if (hasBaton) {
         ctx.strokeStyle = '#f7f709'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(x + w/2, y + h/2); ctx.lineTo(x + w/2 + 12, y - 8); ctx.stroke();
+        const bx = x + w/2 + (runner && runner.vx < -0.5 ? -12 : 12);
+        ctx.beginPath(); ctx.moveTo(x + w/2, y + h/2); ctx.lineTo(bx, y - 8); ctx.stroke();
         ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 8;
-        ctx.beginPath(); ctx.arc(x + w/2 + 12, y - 8, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(bx, y - 8, 4, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
       }
     }
 
     function drawPlatform(p) {
-      ctx.fillStyle = '#2a2a44';
-      ctx.fillRect(p.x, p.y, p.w, p.h);
+      if (IMAGES.platform) {
+        const pat = ctx.createPattern(IMAGES.platform, 'repeat');
+        ctx.fillStyle = pat;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+      } else {
+        ctx.fillStyle = '#2a2a44';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+      }
       ctx.strokeStyle = '#8aff5b'; ctx.lineWidth = 1;
       ctx.strokeRect(p.x, p.y, p.w, p.h);
     }
 
     function drawOrb(o) {
-      ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
+      if (IMAGES.orb) {
+        const r = o.r * 2;
+        ctx.drawImage(IMAGES.orb, o.x - o.r, o.y - o.r, r, r);
+      } else {
+        ctx.fillStyle = '#f7f709'; ctx.shadowColor = '#f7f709'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
     }
 
     function drawHandoffZone(z) {
-      ctx.fillStyle = `rgba(138,255,91,${0.15 + Math.sin(Date.now()/300)*0.05})`;
-      ctx.fillRect(z.x, z.y, z.w, z.h);
+      if (IMAGES.handoff_zone) {
+        ctx.drawImage(IMAGES.handoff_zone, z.x, z.y, z.w, z.h);
+      } else {
+        ctx.fillStyle = `rgba(138,255,91,${0.15 + Math.sin(Date.now()/300)*0.05})`;
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+      }
       ctx.strokeStyle = '#8aff5b'; ctx.setLineDash([6,6]); ctx.lineWidth = 2;
       ctx.strokeRect(z.x, z.y, z.w, z.h); ctx.setLineDash([]);
       ctx.fillStyle = '#8aff5b'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
@@ -114,8 +181,12 @@
     }
 
     function drawGoal(g) {
-      ctx.fillStyle = `rgba(5,217,232,${0.2 + Math.sin(Date.now()/250)*0.08})`;
-      ctx.fillRect(g.x, g.y, g.w, g.h);
+      if (IMAGES.goal) {
+        ctx.drawImage(IMAGES.goal, g.x, g.y, g.w, g.h);
+      } else {
+        ctx.fillStyle = `rgba(5,217,232,${0.2 + Math.sin(Date.now()/250)*0.08})`;
+        ctx.fillRect(g.x, g.y, g.w, g.h);
+      }
       ctx.strokeStyle = '#05d9e8'; ctx.lineWidth = 2;
       ctx.strokeRect(g.x, g.y, g.w, g.h);
       ctx.fillStyle = '#05d9e8'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
@@ -123,14 +194,20 @@
     }
 
     function drawHazard(h) {
-      ctx.fillStyle = '#ff2a6d';
-      for (let i = 0; i < h.w; i += 10) {
-        const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
-        ctx.beginPath();
-        ctx.moveTo(h.x + i, h.y + h.h);
-        ctx.lineTo(h.x + i + 5, h.y + h.h - spikeH);
-        ctx.lineTo(h.x + i + 10, h.y + h.h);
-        ctx.fill();
+      if (IMAGES.hazard_spike) {
+        for (let i = 0; i < h.w; i += 18) {
+          ctx.drawImage(IMAGES.hazard_spike, h.x + i, h.y + h.h - 18, 18, 18);
+        }
+      } else {
+        ctx.fillStyle = '#ff2a6d';
+        for (let i = 0; i < h.w; i += 10) {
+          const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
+          ctx.beginPath();
+          ctx.moveTo(h.x + i, h.y + h.h);
+          ctx.lineTo(h.x + i + 5, h.y + h.h - spikeH);
+          ctx.lineTo(h.x + i + 10, h.y + h.h);
+          ctx.fill();
+        }
       }
       ctx.fillStyle = '#000'; ctx.globalAlpha = 0.4;
       ctx.fillRect(h.x, h.y, h.w, h.h/2);
@@ -143,21 +220,32 @@
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.scale(pulse, pulse);
-      ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 14;
-      ctx.beginPath();
-      ctx.arc(0, 0, 10, 0.4, Math.PI * 1.6, false);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+      if (IMAGES.crescent) {
+        ctx.drawImage(IMAGES.crescent, -10, -10, 20, 20);
+      } else {
+        ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 3; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0.4, Math.PI * 1.6, false);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
       ctx.restore();
     }
 
     function drawBackground() {
+      if (IMAGES.background) {
+        ctx.drawImage(IMAGES.background, 0, 0, W, H);
+        return;
+      }
       ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, W, H);
       // distant city grid
       ctx.strokeStyle = '#151525'; ctx.lineWidth = 1;
       for (let x = 0; x <= W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       for (let y = 0; y <= H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
     }
+
+    // load any sprites provided in the manifest (e.g., Hardy's Pixel Atelier assets)
+    loadSprites(SPRITES);
 
     const runners = [
       { name: 'A', x: 30, y: 240, w: 16, h: 24, color: '#ff2a6d', vx: 0, vy: 0, onGround: false, hasBaton: true, active: true },
@@ -487,7 +575,7 @@
       if (goal) drawGoal(goal);
       orbs.forEach(o => { if (!o.taken) drawOrb(o); });
       if (crescent && crescent.active) drawCrescent(crescent);
-      runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton));
+      runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton, r));
       // particles
       for (const p of particles) {
         ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/0.7);
