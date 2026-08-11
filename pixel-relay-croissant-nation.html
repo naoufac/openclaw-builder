@@ -41,10 +41,13 @@
   <p class="sub">Golden Baton Trial · openclaw-builder & croissantman</p>
   <div id="hud">
     <span class="p1">BAKER A: <b id="s1">ready</b></span>
+    <span class="p2">BAKER B: <b id="s2">idle</b></span>
+    <span>TEMPO: <b id="bpm">72</b> BPM</span>
+    <span>WARM: <b id="warmth">0.0</b>s</span>
+    <span>CARE: <b id="careBonus">0</b></span>
     <span>TIME: <b id="time">70</b></span>
     <span>BEST: <b id="best">0</b></span>
     <span>SEAMS: <b id="seams">0</b></span>
-    <span class="p2">BAKER B: <b id="s2">idle</b></span>
   </div>
   <div id="wrap">
     <canvas id="game" width="720" height="400"></canvas>
@@ -53,15 +56,17 @@
       <p>Keep the baton warm. Pass clean. Chain the crumbs. Crown the run.</p>
       <p>Baker A carries the golden baton from the Cold Oven up the Butter Ramp to the Handoff Hearth.</p>
       <p>Press H in the oven arch to pass the baton to Baker B. A Golden Crescent bakes above the arch.</p>
-      <p>Bring Baker B into the arch for the handoff — this rekindles the hearth. Then climb to the Crown.</p>
+      <p>Bring Baker B back through the arch to <b>rekindle the hearth</b>, then climb to the Crown.</p>
+      <p>Follow the <b>72 BPM ghost route</b>: a warm crumb trail marks the proven path only after a clean handoff.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap baker · H to handoff in arch</p>
       <button id="start">ENTER THE OVEN</button>
     </div>
   </div>
   <div class="help">
     <b>Croissant Nation rules:</b> Hit no <b>cooling spikes</b>. Collect every <b>butter pearl</b>. Hand off clean inside the <b>oven arch</b> with <b>H</b>.
-    A crumb trail appears after a clean handoff. Bring Baker B back through the arch to <b>rekindle the hearth</b> (+100, combo boost).
-    Golden crescents appear only after a clean handoff. Chain them for a CRUMB CROWN. Perfect run = all pearls + no spikes + crown finish = +300.
+    The <b>72 BPM ghost route</b> marks the relay cadence and path. Crumbs warm by provenance while the baton is carried; spikes cool it.
+    Bring Baker B back through the arch to <b>rekindle the hearth</b> (+100, combo boost). Golden crescents appear only after a clean handoff.
+    Chain them for a CRUMB CROWN. Perfect run = all pearls + no spikes + crown finish = +300.
     Use <b>Space</b> to switch control between bakers when you need to reposition.
   </div>
 
@@ -70,6 +75,13 @@
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.55, JUMP = -10.5, SPEED = 4, FRICTION = 0.78;
+    const BPM = 72;
+
+    // warmed-by provenance: baton warmth accrues while carried; consumed by CARE BONUS return
+    let batonWarmth = 0;
+    let lastWarmthUpdate = 0;
+    let careBonus = 0;
+    let careBonusReady = false;
 
     // pastry palette sprite hooks
     function drawRunner(x, y, w, h, color, hasBaton) {
@@ -168,6 +180,51 @@
       ctx.restore();
     }
 
+    // 72 BPM ghost route: text-first seam showing intended relay cadence and path
+    function drawGhostRoute() {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(247,201,92,0.22)';
+      ctx.setLineDash([8, 12]);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const route = [
+        {x: 38, y: H - 60},
+        {x: W * 0.38, y: H - 120},
+        {x: handoffZone.x + handoffZone.w/2, y: handoffZone.y + handoffZone.h/2},
+        {x: W * 0.68, y: H - 200},
+        {x: W - 30, y: H - 180}
+      ];
+      ctx.moveTo(route[0].x, route[0].y);
+      for (let i = 1; i < route.length; i++) ctx.lineTo(route[i].x, route[i].y);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(247,201,92,0.5)';
+      ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('OVEN', route[0].x, route[0].y - 8);
+      ctx.fillText('ARCH', route[2].x, route[2].y - 10);
+      ctx.fillText('CROWN', route[4].x, route[4].y - 10);
+      ctx.restore();
+    }
+
+    // 72 BPM tempo cue pulsing at the handoff arch
+    function drawTempoCue() {
+      const beat = performance.now() / 1000;
+      const period = 60 / BPM;
+      const phase = (beat % period) / period;
+      const radius = 4 + phase * 14;
+      const alpha = 1 - phase;
+      ctx.save();
+      ctx.strokeStyle = `rgba(247,201,92,${0.35 * alpha})`;
+      ctx.fillStyle = `rgba(247,201,92,${0.45 * alpha})`;
+      ctx.lineWidth = 2;
+      const cx = handoffZone.x + handoffZone.w/2;
+      const cy = handoffZone.y + handoffZone.h/2;
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = `rgba(247,201,92,${alpha})`;
+      ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('72 BPM', cx, cy - radius - 6);
+      ctx.restore();
+    }
+
     function drawBackground() {
       ctx.fillStyle = '#120e0b'; ctx.fillRect(0, 0, W, H);
       // warm parchment grid
@@ -205,6 +262,7 @@
     let hitHazardThisRun = false;
     let collected = 0;
     let comboCount = 0, comboTimer = 0, comboMax = 4, comboActive = false;
+    let beatAccumulator = 0; // 72 BPM quarter-note accumulator for ghost-route pulse
 
     try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayCroissantBest') || '0', 10)); } catch (e) {}
     document.getElementById('best').textContent = best;
@@ -234,7 +292,9 @@
         if (!hitHazardThisRun) {
           crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 45, r: 13, active: true };
           bakeCrumbTrail();
+          careBonusReady = true; // B must return to hearth for CARE BONUS
         }
+        batonWarmth = 0; // provenance timer resets at handoff boundary
       }
       lastSwap = now;
     }
@@ -312,6 +372,8 @@
       particles = []; timeLeft = 70; won = false; crescent = null; crumbTrail = []; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0; rekindleFlash = 0; hearthRekindled = false;
       comboCount = 0; comboTimer = 0; comboActive = false; liveSeam = [];
+      batonWarmth = 0; lastWarmthUpdate = performance.now(); careBonus = 0; careBonusReady = false;
+      beatAccumulator = 0;
       makeLevel(); updateHud();
     }
 
@@ -361,6 +423,14 @@
     function update(dt) {
       runners.forEach(r => { control(r); updatePhysics(r); });
 
+      // warmed-by provenance: baton stays warm while carried; resets on spike hit
+      const now = performance.now();
+      const holder = runners.find(r => r.hasBaton);
+      if (holder && !won) {
+        batonWarmth += (now - lastWarmthUpdate) / 1000;
+      }
+      lastWarmthUpdate = now;
+
       if (solo) {
         const carrier = runners.find(r => r.hasBaton);
         if (carrier && !carrier.active) {
@@ -390,13 +460,20 @@
         }
       }
 
-      // Hearth rekindle: B returns through arch carrying baton
+      // Hearth rekindle / CARE BONUS: B returns through arch carrying baton
       const b = runners[1];
       if (!hearthRekindled && b.hasBaton && rectIntersectInflated(b, handoffZone, 4)) {
         hearthRekindled = true; rekindleFlash = 1.5;
         comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c', true);
         liveSeam = [{ x: b.x + b.w/2, y: b.y + b.h/2, t: 0 }];
+        if (careBonusReady) {
+          const provenanceBonus = Math.min(Math.floor(batonWarmth * 10), 50);
+          careBonus = 100 + provenanceBonus;
+          timeLeft += 8; // CARE BONUS return: +8s for following the warmed provenance back to the arch
+          batonWarmth = 0; // provenance consumed by care bonus
+          careBonusReady = false;
+        }
       }
       if (hearthRekindled && b.hasBaton && liveSeam.length < 60) {
         liveSeam.push({ x: b.x + b.w/2, y: b.y + b.h/2, t: liveSeam[liveSeam.length-1].t + 1 });
@@ -407,6 +484,7 @@
         for (const r of runners) {
           if (rectIntersect(r, hurtBox)) {
             hitHazardThisRun = true;
+            batonWarmth = 0; // cooling spikes extinguish warmth
             r.vy = -6; r.vx = (r.x < h.x + h.w/2 ? -3 : 3);
             r.y = h.y - r.h - 2;
             spawnParticles(r.x + r.w/2, r.y + r.h, '#8a9aa8');
@@ -449,6 +527,9 @@
       document.getElementById('s2').textContent = b.hasBaton ? 'baton' : (b.active ? 'active' : 'idle');
       document.getElementById('time').textContent = Math.max(0, Math.ceil(timeLeft));
       document.getElementById('seams').textContent = publicSeams.length;
+      document.getElementById('bpm').textContent = careBonusReady ? '72+' : '72';
+      document.getElementById('warmth').textContent = batonWarmth.toFixed(1);
+      document.getElementById('careBonus').textContent = careBonus;
     }
 
     function endGame(win) {
@@ -463,12 +544,13 @@
         const rekindleBonus = hearthRekindled ? 100 : 0;
         const comboBonus = comboActive ? comboCount * 60 : 0;
         const perfectBonus = (!hitHazardThisRun && collected === orbs.length) ? 300 : 0;
-        const score = baseScore + rekindleBonus + comboBonus + perfectBonus;
+        const score = baseScore + rekindleBonus + comboBonus + perfectBonus + careBonus;
         best = Math.max(best, score);
         try { localStorage.setItem('pixelRelayCroissantBest', best.toString()); } catch (e) {}
         document.getElementById('best').textContent = best;
         let victoryText = `Score: ${score} · Best: ${best}<br>Baton warm, crown claimed.`;
         if (hearthRekindled) victoryText += `<br>HEARTH REKINDLED +100`;
+        if (careBonus > 0) victoryText += `<br>CARE BONUS RETURN +${careBonus}`;
         if (comboActive) victoryText += `<br>Crumb Crown x${comboCount} +${comboBonus}`;
         if (perfectBonus) victoryText += `<br>CROISSANT NATION PERFECT RUN +300`;
         overlay('CROWN CLAIMED', victoryText, 'BAKE AGAIN');
@@ -503,13 +585,15 @@
       ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
     }
 
-    function drawCrumbTrail() {
+    function drawCrumbTrail(dt) {
       if (!crumbTrail.length) return;
+      beatAccumulator += dt * 1.2; // 72 BPM quarter-note pulse ≈ 1.2 Hz
+      const pulse = 0.7 + 0.3 * Math.sin(beatAccumulator * Math.PI * 2);
       ctx.fillStyle = '#f7c95c'; ctx.shadowColor = '#f7c95c'; ctx.shadowBlur = 6;
       for (const c of crumbTrail) {
         if (!c.active) continue;
-        ctx.globalAlpha = 0.5 + Math.sin(Date.now()/150 + c.x)*0.25;
-        ctx.beginPath(); ctx.arc(c.x, c.y, 2.5, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 0.4 * pulse + 0.1 * Math.sin(Date.now()/150 + c.x);
+        ctx.beginPath(); ctx.arc(c.x, c.y, 2.5 + 1.5 * (1 - pulse), 0, Math.PI*2); ctx.fill();
       }
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
@@ -539,7 +623,6 @@
       if (goal) drawGoal(goal);
       orbs.forEach(o => { if (!o.taken) drawOrb(o); });
       if (crescent && crescent.active) drawCrescent(crescent);
-      drawCrumbTrail();
       runners.forEach(r => drawRunner(r.x, r.y, r.w, r.h, r.color, r.hasBaton));
       for (const p of particles) {
         ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life/0.7);
@@ -552,9 +635,10 @@
         ctx.strokeStyle = '#fff8ee'; ctx.lineWidth = 1;
         ctx.strokeRect(active.x - 3, active.y - 6, active.w + 6, active.h + 6);
       }
-      if (careBonus > 0) {
+      drawCrumbTrail(0.016);
+      if (careBonus > 0 && !careBonusReady) {
         ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
-        ctx.fillText(`CARE BONUS +${careBonus}`, W/2, 28);
+        ctx.fillText('CARE BONUS RETURN', W/2, 28);
       }
       drawCombo();
       drawVictoryGlow();
