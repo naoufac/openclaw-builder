@@ -11,5 +11,9 @@ Verified engineering analysis of Manus AI's production architecture, codified as
 
 Every claim is marked **verified**, **unverified**, or **inferred** per the coding-discipline honesty labels. No speculative content.
 
+## Sources
+
+This work builds on publicly available research. Full source attribution and prior art assessment in [Technical Findings](./technical-findings.md#sources--prior-art).
+
 ## Date
 August 12, 2026

@@ -197,4 +197,12 @@ Before deploying any Manus-derived agent system:
 
 ---
 
+## Sources & Attribution
+
+This discipline synthesizes findings from multiple sources. The architecture description draws from the leaked Manus system prompt (jlia0, March 2025), the renschni Deep Research analysis (March 2025), Peak Ji's public disclosures, and the CodeAct paper (OpenReview 2024). The prescriptive discipline format, KV-cache analysis, and production metrics are our original contribution.
+
+See `technical-findings.md` for the full source list and prior art assessment.
+
+---
+
 *This discipline is derived from verified technical findings about Manus AI's production architecture. It is not aspirational. It is descriptive of what works at production scale, as demonstrated by the system it describes.*

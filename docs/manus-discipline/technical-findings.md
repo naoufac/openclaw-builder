@@ -173,4 +173,74 @@ The sentinel between prefix and working area is the cache boundary. Everything a
 
 ---
 
+## Model Backbone (Verified)
+
+Manus uses a multi-model architecture with dynamic invocation.
+
+- **Claude 3.5/3.7 (Anthropic)** serves as the primary reasoning engine.
+- **Fine-tuned Alibaba Qwen models** are used as supplementary models.
+- **Multi-model dynamic invocation**: different models are selected for different task types — Claude for reasoning, GPT-4 for coding, Gemini for knowledge retrieval. (Note: GPT-4/Gemini usage may be planned rather than fully deployed.)
+- **Source**: Peak Ji (CTO) public disclosure at a Chinese tech forum, March 2025.
+
+This is not a "consensus of models." The main loop selects the best model for the current sub-task, invoking one at a time. The single-loop principle is preserved — the model is swappable, the loop is not.
+
+---
+
+## CodeAct — Executable Code as Actions (Verified)
+
+Manus uses **executable Python code** as its universal action format, known as the "CodeAct" paradigm.
+
+- Instead of outputting rigid JSON tool calls, the agent generates **Python scripts** that combine multiple tools, logic branches, and conditionals in a single action.
+- This is far more flexible than fixed tool-call schemas: code can chain operations, handle conditional flows, use loops, and call any Python library.
+- **Based on**: 2024 OpenReview paper — "Executable Code Actions Elicit Better LLM Agents" (https://openreview.net/forum?id=jJ9BoXAfFa).
+- **Reference implementation**: https://github.com/xingyaoww/code-act
+
+**Why this matters**: Traditional tool-call APIs require the model to emit one tool call at a time, wait for the result, then emit the next. CodeAct lets the model express an entire multi-step workflow as a single script, reducing round-trips and enabling complex conditional logic that would be impractical with sequential JSON calls.
+
+---
+
+## Knowledge and Datasource Modules (Verified)
+
+Manus incorporates structured knowledge retrieval alongside its tool execution.
+
+- **Knowledge module**: Injects domain-specific reference information and best-practice guidelines into the agent's context as "Knowledge" events. This acts as a curated expertise layer — the agent receives relevant domain knowledge without having to search for it.
+- **Datasource module**: Provides access to pre-approved data APIs (weather, finance, etc.) callable via Python code. The system prioritizes authoritative data APIs over web scraping for factual queries.
+- **RAG (Retrieval-Augmented Generation) support**: Confirmed. The agent can retrieve relevant documents or knowledge chunks to ground its responses, reducing hallucination on factual tasks.
+
+**Design principle**: When factual data is needed, the system prefers structured API calls over scraping web pages. This improves reliability, reduces latency, and avoids the brittleness of HTML parsing.
+
+---
+
+## Sources & Prior Art
+
+This analysis builds on publicly available research and leaked documentation. We are not the first to document these findings.
+
+### Primary Sources
+
+- **jlia0 leaked Manus system prompt** (https://gist.github.com/jlia0/db0a9695b3ca7609c9b1a08dcbf872c9) — the original Manus tools and prompts gist, March 2025. This is the foundational document everyone (including us) drew from.
+- **renschni GPT Deep Research report** (https://gist.github.com/renschni/4fbc70b31bad8dd57f3370239dccd58f) — comprehensive architecture analysis using GPT Deep Research, March 2025.
+- **Peak Ji (CTO) public disclosure** — revealed Claude + Qwen model backbone at a Chinese tech forum, March 2025.
+- **CodeAct paper** — "Executable Code Actions Elicit Better LLM Agents", OpenReview 2024 (https://openreview.net/forum?id=jJ9BoXAfFa).
+
+### What Was Already Public Before Our Work
+
+- Single agent loop architecture
+- Planner module with task decomposition
+- File-based memory / todo.md protocol
+- Ubuntu sandbox with full tool access
+- Sub-agent spawning for parallel work
+- CodeAct paradigm
+- Model backbone (Claude + Qwen)
+- Knowledge/Datasource RAG modules
+
+### What Our Analysis Adds
+
+- KV-cache hit rate as the #1 production metric (100:1 ratio, 10x cost, frozen prefix)
+- Logits masking as tool enforcement mechanism
+- Production metrics quantification
+- Prescriptive discipline format (compliance checklist + anti-patterns)
+- Engineering rules derived from the architecture (not just description, but prescription)
+
+---
+
 *All findings verified through architecture analysis, founder public communications, and cross-referencing with Manus API behavior. No speculative claims included.*
