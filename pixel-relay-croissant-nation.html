@@ -33,6 +33,14 @@
     #overlay button:hover { background: #e8c090; }
     .help { width: 720px; font-size: 0.85rem; color: #a68a6d; margin-bottom: 1.5rem; }
     .help b { color: var(--text); }
+    .victory-stats { display: grid; gap: 0.4rem; text-align: left; margin: 0.6rem 0; min-width: 280px; }
+    .victory-row { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #4a3b2e; padding-bottom: 0.2rem; }
+    .victory-row.bonus { color: #f7c95c; }
+    .victory-label { color: #a68a6d; }
+    .victory-value { color: #f5e6d3; font-weight: bold; }
+    .victory-chain { margin-top: 0.5rem; border-top: 1px solid #4a3b2e; padding-top: 0.4rem; text-align: center; }
+    .victory-chain-beads { display: flex; justify-content: center; gap: 0.4rem; margin-top: 0.3rem; flex-wrap: wrap; }
+    .combo-bead { font-size: 1.3rem; line-height: 1; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -45,6 +53,7 @@
     <span>TEMPO: <b id="bpm">72</b> BPM</span>
     <span>WARM: <b id="warmth">0.0</b>s</span>
     <span>CARE: <b id="careBonus">0</b></span>
+    <span id="seamTraceSpan" style="font-size:0.75rem;color:#a68a6d;">TRACE: <b id="seamTrace">—</b></span>
     <span>TIME: <b id="time">70</b></span>
     <span>BEST: <b id="best">0</b></span>
     <span>SEAMS: <b id="seams">0</b></span>
@@ -56,8 +65,8 @@
       <p>Keep the baton warm. Pass clean. Chain the crumbs. Crown the run.</p>
       <p>Baker A carries the golden baton from the Cold Oven up the Butter Ramp to the Handoff Hearth.</p>
       <p>Press H in the oven arch to pass the baton to Baker B. A Golden Crescent bakes above the arch.</p>
-      <p>Bring Baker B back through the arch to <b>rekindle the hearth</b>, then climb to the Crown.</p>
-      <p>Follow the <b>72 BPM ghost route</b>: a warm crumb trail marks the proven path only after a clean handoff.</p>
+      <p>After a clean handoff, bring Baker B back through the arch to <b>rekindle the hearth</b> and claim the <b>CARE BONUS</b>, then climb to the Crown.</p>
+      <p>Follow the <b>72 BPM ghost route</b>: it marks the relay cadence and the proven path through the oven, arch, and crown.</p>
       <p><b>Controls:</b> WASD / Arrows to move · Space to jump/swap baker · H to handoff in arch</p>
       <button id="start">ENTER THE OVEN</button>
     </div>
@@ -65,7 +74,7 @@
   <div class="help">
     <b>Croissant Nation rules:</b> Hit no <b>cooling spikes</b>. Collect every <b>butter pearl</b>. Hand off clean inside the <b>oven arch</b> with <b>H</b>.
     The <b>72 BPM ghost route</b> marks the relay cadence and path. Crumbs warm by provenance while the baton is carried; spikes cool it.
-    Bring Baker B back through the arch to <b>rekindle the hearth</b> (+100, combo boost). Golden crescents appear only after a clean handoff.
+    After a clean handoff, bring Baker B back through the arch to <b>rekindle the hearth</b> and claim the <b>CARE BONUS</b> (100 + up to 50 provenance). Golden crescents appear only after a clean handoff.
     Chain them for a CRUMB CROWN. Perfect run = all pearls + no spikes + crown finish = +300.
     Use <b>Space</b> to switch control between bakers when you need to reposition.
   </div>
@@ -77,6 +86,326 @@
     const GRAVITY = 0.55, JUMP = -10.5, SPEED = 4, FRICTION = 0.78;
     const BPM = 72;
 
+    // Sprite manifest — Hardy drops URLs here, code never changes.
+    // Anchor size: 16×16 px. Ghost trail strip: 32×16 (3 frames).
+    // Palette: outline cocoa #3A2418; crumb gold #F6C85F; oven ember #E06A2E; arch blue-ghost #6FD3FF low alpha.
+    const SPRITE_SOCKETS = {
+      runnerA: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      runnerB: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      platform: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      orb: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      handoffZone: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      crescent: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      hazard: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      goal: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      baton: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      hearthGlow: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
+      ghostTrail: { sheet: '', frameW: 32, frameH: 16, frames: 3 }
+    };
+
+    // Placeholder pixel-art sprites generated in-browser so the game renders immediately.
+    // Hardy can replace these data URLs with his own PNGs by editing SPRITE_SOCKETS.
+    function bakePlaceholderSprites() {
+      const P = 16;
+      function make(w, h, draw) {
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const x = c.getContext('2d');
+        draw(x);
+        return c.toDataURL('image/png');
+      }
+      SPRITE_SOCKETS.runnerA.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#e8a838'; x.fillRect(2, 5, 12, 10);
+        x.fillStyle = '#f5e6d3'; x.fillRect(4, 2, 8, 6);
+        x.fillStyle = '#fff8ee'; x.fillRect(3, 1, 10, 3);
+        x.fillStyle = '#3A2418'; x.fillRect(5, 4, 2, 2); x.fillRect(9, 4, 2, 2);
+        x.fillStyle = '#f7c95c'; x.fillRect(11, 2, 3, 13);
+      });
+      SPRITE_SOCKETS.runnerB.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#f7c95c'; x.fillRect(2, 5, 12, 10);
+        x.fillStyle = '#f5e6d3'; x.fillRect(4, 2, 8, 6);
+        x.fillStyle = '#fff8ee'; x.fillRect(3, 1, 10, 3);
+        x.fillStyle = '#3A2418'; x.fillRect(5, 4, 2, 2); x.fillRect(9, 4, 2, 2);
+      });
+      SPRITE_SOCKETS.platform.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#5c4a3a'; x.fillRect(1, 2, 14, 12);
+        x.fillStyle = '#d4a574'; x.fillRect(1, 2, 14, 2);
+        x.fillStyle = 'rgba(18,14,11,0.25)'; x.fillRect(4, 6, 2, 8); x.fillRect(10, 6, 2, 8);
+      });
+      SPRITE_SOCKETS.orb.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#fff8ee'; x.beginPath(); x.arc(8, 8, 5, 0, Math.PI * 2); x.fill();
+        x.fillStyle = '#f7c95c'; x.beginPath(); x.arc(6, 6, 2, 0, Math.PI * 2); x.fill();
+      });
+      SPRITE_SOCKETS.handoffZone.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#E06A2E'; x.fillRect(2, 6, 12, 10);
+        x.fillStyle = '#120e0b'; x.fillRect(4, 4, 8, 8);
+        x.fillStyle = '#f7c95c'; x.fillRect(5, 10, 6, 2);
+      });
+      SPRITE_SOCKETS.crescent.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.strokeStyle = '#f7c95c'; x.lineWidth = 2;
+        x.beginPath(); x.arc(8, 8, 5, 0.35, Math.PI * 1.65, false); x.stroke();
+      });
+      SPRITE_SOCKETS.hazard.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#8a9aa8';
+        x.beginPath(); x.moveTo(0, 16); x.lineTo(4, 8); x.lineTo(8, 16); x.fill();
+        x.beginPath(); x.moveTo(8, 16); x.lineTo(12, 6); x.lineTo(16, 16); x.fill();
+      });
+      SPRITE_SOCKETS.goal.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#FFF1B8'; x.beginPath(); x.moveTo(2, 12); x.lineTo(4, 6); x.lineTo(8, 10); x.lineTo(12, 6); x.lineTo(14, 12); x.fill();
+        x.fillStyle = '#f7c95c'; x.beginPath(); x.arc(8, 6, 2, 0, Math.PI * 2); x.fill();
+      });
+      SPRITE_SOCKETS.baton.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, P, P);
+        x.fillStyle = '#f7c95c'; x.fillRect(2, 2, 12, 3);
+        x.fillStyle = '#fff8ee'; x.beginPath(); x.arc(12, 3, 2, 0, Math.PI * 2); x.fill();
+      });
+      SPRITE_SOCKETS.hearthGlow.sheet = make(P, P, x => {
+        x.clearRect(0, 0, P, P);
+        const g = x.createRadialGradient(8, 8, 0, 8, 8, 8);
+        g.addColorStop(0, 'rgba(232,168,56,0.9)');
+        g.addColorStop(1, 'rgba(232,168,56,0)');
+        x.fillStyle = g; x.fillRect(0, 0, P, P);
+      });
+      SPRITE_SOCKETS.ghostTrail.sheet = make(32, 16, x => {
+        x.clearRect(0, 0, 32, 16);
+        x.fillStyle = '#3A2418'; x.fillRect(0, 0, 32, 16);
+        for (let i = 0; i < 3; i++) {
+          const cx = 5.5 + i * 10.5;
+          x.fillStyle = 'rgba(111,211,255,0.55)';
+          x.beginPath(); x.arc(cx, 8, 3, 0, Math.PI * 2); x.fill();
+        }
+      });
+    }
+
+    const loadedSprites = {};
+    function loadSpriteSheet(key, url) {
+      if (!url || loadedSprites[key]) return;
+      const img = new Image();
+      img.src = url;
+      img.onload = () => { loadedSprites[key] = img; };
+      img.onerror = () => { delete loadedSprites[key]; };
+    }
+    function loadAllSprites() {
+      for (const key in SPRITE_SOCKETS) {
+        const s = SPRITE_SOCKETS[key];
+        if (s && s.sheet) loadSpriteSheet(key, s.sheet);
+      }
+    }
+    function drawSprite(key, x, y, w, h, frame = 0, alpha = 1) {
+      const img = loadedSprites[key];
+      if (!img || !img.complete || !img.naturalWidth) return false;
+      const s = SPRITE_SOCKETS[key];
+      const sx = (frame % s.frames) * s.frameW;
+      const sy = 0;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, sx, sy, s.frameW, s.frameH, x, y, w, h);
+      ctx.restore();
+      return true;
+    }
+
+    // Motif map: event -> { notes, rhythm, duration }
+    const MOTIF_MAP = {
+      step: { notes: [200], rhythm: 'staccato', duration: 0.04, gain: 0.08 },
+      jump: { notes: [300, 450], rhythm: 'ascend', duration: 0.12, gain: 0.12 },
+      pearl: { notes: [600, 800, 1000], rhythm: 'sparkle', duration: 0.18, gain: 0.15 },
+      handoff: { notes: [440, 554, 659], rhythm: 'chord', duration: 0.3, gain: 0.18 },
+      rekindle: { notes: [392, 523, 659, 784], rhythm: 'arpeggio', duration: 0.45, gain: 0.2 },
+      crown: { notes: [523, 659, 784, 1047], rhythm: 'fanfare', duration: 0.6, gain: 0.25 },
+      spike: { notes: [120], rhythm: 'noise', duration: 0.2, gain: 0.15 },
+      civicSeam: { notes: [330, 392, 523], rhythm: 'pulse', duration: 0.4, gain: 0.16 },
+      pause: { notes: [264], rhythm: 'staccato', duration: 0.1, gain: 0.1 },
+      name: { notes: [330], rhythm: 'staccato', duration: 0.1, gain: 0.1 },
+      mark: { notes: [392], rhythm: 'staccato', duration: 0.1, gain: 0.1 },
+      return: { notes: [523], rhythm: 'staccato', duration: 0.2, gain: 0.12 }
+    };
+    let audioCtx = null;
+    const civicSeam = {
+      buildingId: '',       // set by setCivicSeamBuilding(id)
+      audioUrl: '',         // optional external track
+      phase72: 0,           // current 72 BPM phase [0,1)
+      active: false,        // true when arch proximity + ghost route visible
+      lastBeat: 0,          // timestamp of last beat
+      audioLoaded: false,   // true if external track loaded
+      audioRetries: 0       // current retry count
+    };
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playTone(freq, start, duration, gain, type = 'sine') {
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime + start;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0 + duration * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0 + duration + 0.05);
+    }
+
+    function playMotif(name) {
+      initAudio();
+      if (!audioCtx || audioCtx.state === 'suspended') {
+        if (audioCtx) audioCtx.resume();
+        return;
+      }
+      const motif = MOTIF_MAP[name];
+      if (!motif) return;
+      const { notes, rhythm, duration, gain } = motif;
+      if (rhythm === 'chord' || rhythm === 'arpeggio' || rhythm === 'fanfare' || rhythm === 'pulse') {
+        notes.forEach((f, i) => playTone(f, i * (duration / notes.length) * (rhythm === 'chord' ? 0 : 1), duration / notes.length * (rhythm === 'chord' ? 1.5 : 1), gain));
+      } else if (rhythm === 'sparkle') {
+        notes.forEach((f, i) => playTone(f, i * 0.04, 0.15 - i * 0.03, gain));
+      } else if (rhythm === 'ascend') {
+        notes.forEach((f, i) => playTone(f, i * 0.05, 0.1, gain));
+      } else if (rhythm === 'noise') {
+        playTone(notes[0], 0, duration, gain, 'sawtooth');
+      } else {
+        playTone(notes[0], 0, duration, gain);
+      }
+    }
+
+    function playHeartbeat() {
+      if (!audioCtx) return;
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.frequency.setValueAtTime(80, t);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.06, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(t); osc.stop(t + 0.1);
+    }
+
+    // Civic seam API: wire to a city building_id and optional audio URL
+    function setCivicSeamBuilding(id, audioUrl = '') {
+      civicSeam.buildingId = id;
+      civicSeam.audioUrl = audioUrl;
+      if (audioUrl) loadCivicSeamAudio(audioUrl);
+    }
+
+    function loadCivicSeamAudio(url, attempt = 1) {
+      if (!url) { civicSeam.audioLoaded = false; return; }
+      civicSeam.audioUrl = url;
+      const audio = new Audio(url);
+      audio.preload = 'auto';
+      audio.loop = true;
+      audio.volume = 0.5;
+      audio.oncanplaythrough = () => { civicSeam.audioLoaded = true; civicSeam.audioRetries = 0; };
+      audio.onerror = () => {
+        civicSeam.audioLoaded = false;
+        if (attempt < 4) {
+          civicSeam.audioRetries = attempt;
+          setTimeout(() => loadCivicSeamAudio(url, attempt + 1), 5000); // shortened retry: 5s
+        }
+      };
+      // Audio only starts after user gesture via triggerCivicSeamAudio()
+      civicSeam.audioElement = audio;
+    }
+
+    function triggerCivicSeamAudio() {
+      if (!civicSeam.audioLoaded || !civicSeam.audioElement) return;
+      if (civicSeam.audioElement.paused) {
+        civicSeam.audioElement.currentTime = 0;
+        civicSeam.audioElement.play().catch(() => { civicSeam.audioLoaded = false; });
+      }
+    }
+
+    function stopCivicSeamAudio() {
+      if (civicSeam.audioElement && !civicSeam.audioElement.paused) {
+        civicSeam.audioElement.pause();
+      }
+    }
+
+    // silent-safe callback: if audio missing, visual pulse still runs from civicSeam.phase72
+    function civicSeamAudioHook() {
+      if (civicSeam.audioLoaded && civicSeam.audioElement && civicSeam.active) {
+        try { civicSeam.audioElement.currentTime = civicSeam.phase72 * civicSeam.audioElement.duration; } catch(e){}
+      }
+      // If no audio, do nothing — the visual pulse is already driven separately
+    }
+
+    function updateCivicSeam(dt) {
+      const period = 60 / BPM;
+      civicSeam.phase72 = (performance.now() / 1000 % period) / period;
+      // Trigger only on arch proximity + ghost route visible (crumb trail baked after clean handoff)
+      const carrier = runners.find(r => r.hasBaton) || runners[0];
+      const nearArch = handoffZone && rectIntersectInflated(carrier, handoffZone, 60);
+      const ghostVisible = crumbTrail.length > 0;
+      const shouldActive = nearArch && ghostVisible;
+      if (shouldActive && !civicSeam.active) {
+        civicSeam.active = true;
+        triggerCivicSeamAudio();
+      } else if (!shouldActive && civicSeam.active) {
+        civicSeam.active = false;
+        stopCivicSeamAudio();
+      }
+      if (civicSeam.active) {
+        const beatIndex = Math.floor(civicSeam.phase72 * 4); // quarter-note beats per bar
+        if (beatIndex !== civicSeam.lastBeat) {
+          civicSeam.lastBeat = beatIndex;
+          playCivicSeamBeat();
+        }
+      }
+    }
+
+    // Civic seam cue: a city-sourced tempo pulse that rides the ghost route
+    function drawCivicSeamCue() {
+      const beat = performance.now() / 1000;
+      const period = 60 / BPM;
+      const phase = (beat % period) / period;
+      const route = [
+        {x: 38, y: H - 60},
+        {x: W * 0.38, y: H - 120},
+        {x: handoffZone.x + handoffZone.w/2, y: handoffZone.y + handoffZone.h/2},
+        {x: W * 0.68, y: H - 200},
+        {x: W - 30, y: H - 180}
+      ];
+      const total = route.length - 1;
+      const seg = phase * total;
+      const i = Math.floor(seg);
+      const t = seg - i;
+      if (i >= total) return;
+      const a = route[i], b = route[i + 1];
+      const x = a.x + (b.x - a.x) * t;
+      const y = a.y + (b.y - a.y) * t;
+      ctx.save();
+      const alpha = civicSeam.active ? 0.7 : 0.25;
+      const pulse = 0.5 + 0.5 * Math.sin(civicSeam.phase72 * Math.PI * 2);
+      ctx.strokeStyle = `rgba(247,201,92,${alpha * pulse})`;
+      ctx.fillStyle = `rgba(247,201,92,${alpha * (0.6 + 0.4 * pulse)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 4 + 3 * pulse, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = `rgba(247,201,92,${alpha})`;
+      ctx.font = '9px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(civicSeam.buildingId ? `civic seam ${civicSeam.buildingId.slice(-4)}` : 'Central Plaza tempo', x, y - 10);
+      ctx.restore();
+    }
+
     // warmed-by provenance: baton warmth accrues while carried; consumed by CARE BONUS return
     let batonWarmth = 0;
     let lastWarmthUpdate = 0;
@@ -85,6 +414,13 @@
 
     // pastry palette sprite hooks
     function drawRunner(x, y, w, h, color, hasBaton) {
+      const key = color === '#e8a838' ? 'runnerA' : 'runnerB';
+      if (drawSprite(key, x, y, w, h, 0)) {
+        if (hasBaton && loadedSprites.baton) {
+          drawSprite('baton', x + w/2 - 2, y - 14, 12, 16, 0);
+        }
+        return;
+      }
       ctx.fillStyle = color;
       ctx.shadowColor = color; ctx.shadowBlur = 10;
       ctx.fillRect(x, y, w, h);
@@ -105,6 +441,7 @@
     }
 
     function drawPlatform(p) {
+      if (drawSprite('platform', p.x, p.y, p.w, p.h, 0)) return;
       ctx.fillStyle = '#5c4a3a';
       ctx.fillRect(p.x, p.y, p.w, p.h);
       ctx.strokeStyle = '#d4a574'; ctx.lineWidth = 1;
@@ -115,6 +452,7 @@
     }
 
     function drawOrb(o) {
+      if (drawSprite('orb', o.x - o.r*2, o.y - o.r*2, o.r*4, o.r*4, 0)) return;
       ctx.fillStyle = '#fff8ee'; ctx.shadowColor = '#fff8ee'; ctx.shadowBlur = 8;
       ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
@@ -123,6 +461,7 @@
     }
 
     function drawHandoffZone(z, clean) {
+      if (drawSprite('handoffZone', z.x, z.y, z.w, z.h, 0, clean ? 0.9 : 0.5)) return;
       ctx.fillStyle = clean ? `rgba(247,201,92,${0.18 + Math.sin(Date.now()/300)*0.06})` : `rgba(212,165,116,${0.12 + Math.sin(Date.now()/300)*0.04})`;
       ctx.fillRect(z.x, z.y, z.w, z.h);
       ctx.strokeStyle = clean ? '#f7c95c' : '#d4a574'; ctx.setLineDash([6,6]); ctx.lineWidth = 2;
@@ -132,6 +471,7 @@
     }
 
     function drawGoal(g) {
+      if (drawSprite('goal', g.x, g.y, g.w, g.h, 0)) return;
       ctx.fillStyle = `rgba(247,201,92,${0.2 + Math.sin(Date.now()/250)*0.08})`;
       ctx.fillRect(g.x, g.y, g.w, g.h);
       ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
@@ -149,6 +489,7 @@
     }
 
     function drawHazard(h) {
+      if (drawSprite('hazard', h.x, h.y, h.w, h.h, 0)) return;
       ctx.fillStyle = '#8a9aa8';
       for (let i = 0; i < h.w; i += 10) {
         const spikeH = 8 + (i % 20 === 0 ? 4 : 0);
@@ -165,6 +506,7 @@
 
     function drawCrescent(c) {
       if (!c) return;
+      if (drawSprite('crescent', c.x - c.r, c.y - c.r, c.r*2, c.r*2, 0)) return;
       const pulse = 1 + Math.sin(Date.now()/180) * 0.12;
       ctx.save();
       ctx.translate(c.x, c.y);
@@ -262,7 +604,12 @@
     let hitHazardThisRun = false;
     let collected = 0;
     let comboCount = 0, comboTimer = 0, comboMax = 4, comboActive = false;
+    let comboChain = [];
     let beatAccumulator = 0; // 72 BPM quarter-note accumulator for ghost-route pulse
+    let rekindleProvenanceBonus = 0; // provenance bonus shown in return flash
+    let rekindleCredits = ''; // tiny warmed-by credits line on rekindle
+    let bakedSeamTrace = null; // one-line provenance trace for next runner
+    let seamRitual = null; // {step, timer, name} for Pause/Name/Mark/Return cadence
 
     try { best = Math.max(0, parseInt(localStorage.getItem('pixelRelayCroissantBest') || '0', 10)); } catch (e) {}
     document.getElementById('best').textContent = best;
@@ -275,6 +622,8 @@
     window.addEventListener('keyup', e => keys[e.key] = false);
 
     document.getElementById('start').addEventListener('click', () => {
+      initAudio();
+      setCivicSeamBuilding('e6262f41-48c3-4e8c-935b-bc4a4c07252b'); // Waveform Studio
       document.getElementById('overlay').classList.add('hidden');
       resetLevel(); running = true; requestAnimationFrame(loop);
     });
@@ -289,6 +638,7 @@
       if (inZone && a.hasBaton) {
         a.hasBaton = false; b.hasBaton = true; b.active = true; a.active = false;
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c');
+        playMotif('handoff');
         if (!hitHazardThisRun) {
           crescent = { x: handoffZone.x + handoffZone.w/2, y: handoffZone.y - 45, r: 13, active: true };
           bakeCrumbTrail();
@@ -371,9 +721,10 @@
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
       particles = []; timeLeft = 70; won = false; crescent = null; crumbTrail = []; collected = 0;
       hitHazardThisRun = false; perfectLayerFlash = 0; rekindleFlash = 0; hearthRekindled = false;
-      comboCount = 0; comboTimer = 0; comboActive = false; liveSeam = [];
+      comboCount = 0; comboTimer = 0; comboActive = false; comboChain = []; liveSeam = [];
       batonWarmth = 0; lastWarmthUpdate = performance.now(); careBonus = 0; careBonusReady = false;
-      beatAccumulator = 0;
+      beatAccumulator = 0; rekindleCredits = ''; rekindleProvenanceBonus = 0;
+      seamRitual = null;
       makeLevel(); updateHud();
     }
 
@@ -448,6 +799,7 @@
         const cx = carrier.x + carrier.w/2, cy = carrier.y + carrier.h/2;
         if (Math.hypot(cx - o.x, cy - o.y) < o.r + 12) {
           o.taken = true; collected++; timeLeft += 3; spawnParticles(o.x, o.y, '#fff8ee');
+          playMotif('pearl');
         }
       }
 
@@ -456,6 +808,7 @@
         if (Math.hypot(cx - crescent.x, cy - crescent.y) < crescent.r + 12) {
           crescent.active = false; timeLeft += 5; perfectLayerFlash = 1.2;
           comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
+          comboChain.push({ type: 'crescent', t: performance.now() });
           spawnParticles(crescent.x, crescent.y, '#f7c95c', true);
         }
       }
@@ -465,11 +818,15 @@
       if (!hearthRekindled && b.hasBaton && rectIntersectInflated(b, handoffZone, 4)) {
         hearthRekindled = true; rekindleFlash = 1.5;
         comboCount = Math.min(comboCount + 1, 9); comboTimer = comboMax; comboActive = true;
+        comboChain.push({ type: 'rekindle', t: performance.now() });
         spawnParticles(handoffZone.x + handoffZone.w/2, handoffZone.y + handoffZone.h/2, '#f7c95c', true);
         liveSeam = [{ x: b.x + b.w/2, y: b.y + b.h/2, t: 0 }];
+        seamRitual = { step: 0, timer: 0, name: 'Pause · Name · Mark · Return' };
         if (careBonusReady) {
-          const provenanceBonus = Math.min(Math.floor(batonWarmth * 10), 50);
-          careBonus = 100 + provenanceBonus;
+          rekindleProvenanceBonus = Math.min(Math.floor(batonWarmth * 10), 50);
+          careBonus = 100 + rekindleProvenanceBonus;
+          rekindleCredits = `warmth ${batonWarmth.toFixed(1)}s → +${rekindleProvenanceBonus}`;
+          playMotif('rekindle');
           timeLeft += 8; // CARE BONUS return: +8s for following the warmed provenance back to the arch
           batonWarmth = 0; // provenance consumed by care bonus
           careBonusReady = false;
@@ -485,6 +842,7 @@
           if (rectIntersect(r, hurtBox)) {
             hitHazardThisRun = true;
             batonWarmth = 0; // cooling spikes extinguish warmth
+            playMotif('spike');
             r.vy = -6; r.vx = (r.x < h.x + h.w/2 ? -3 : 3);
             r.y = h.y - r.h - 2;
             spawnParticles(r.x + r.w/2, r.y + r.h, '#8a9aa8');
@@ -505,7 +863,7 @@
       }
 
       if (carrier.hasBaton && rectIntersectInflated(carrier, goal, 8)) {
-        won = true; endGame(true); return;
+        won = true; playMotif('crown'); endGame(true); return;
       }
 
       if (perfectLayerFlash > 0) perfectLayerFlash = Math.max(0, perfectLayerFlash - dt * 1.2);
@@ -515,6 +873,26 @@
         comboTimer -= dt;
         if (comboTimer <= 0) { comboActive = false; comboCount = 0; }
       }
+
+      // Pause · Name · Mark · Return ritual after rekindle
+      if (seamRitual) {
+        const stepDuration = 60 / BPM / 2; // half beat per ritual micro-step
+        seamRitual.timer += dt;
+        if (seamRitual.timer >= stepDuration) {
+          seamRitual.step++;
+          seamRitual.timer = 0;
+          playMotif(['pause', 'name', 'mark', 'return'][seamRitual.step - 1]);
+        }
+        if (seamRitual.step >= 4) {
+          // Leave one warm trace for the next runner
+          if (rekindleCredits) {
+            bakedSeamTrace = { text: `trace: ${rekindleCredits}`, alpha: 1.0 };
+          }
+          seamRitual = null;
+        }
+      }
+
+      updateCivicSeam(dt);
 
       timeLeft -= dt;
       if (timeLeft <= 0) endGame(false);
@@ -530,6 +908,8 @@
       document.getElementById('bpm').textContent = careBonusReady ? '72+' : '72';
       document.getElementById('warmth').textContent = batonWarmth.toFixed(1);
       document.getElementById('careBonus').textContent = careBonus;
+      const traceEl = document.getElementById('seamTrace');
+      if (traceEl) traceEl.textContent = bakedSeamTrace ? bakedSeamTrace.text : '—';
     }
 
     function endGame(win) {
@@ -538,6 +918,10 @@
       if (hearthRekindled && liveSeam.length >= 3) {
         publicSeams.push({ seed: Date.now(), points: liveSeam.slice(0, 60) });
         try { localStorage.setItem('croissantPublicSeams', JSON.stringify(publicSeams)); } catch(e) {}
+      }
+      // Leave one-line provenance trace for the next runner
+      if (hearthRekindled && rekindleCredits) {
+        bakedSeamTrace = { text: rekindleCredits, alpha: 1.0 };
       }
       if (win) {
         const baseScore = Math.ceil(timeLeft * 15) + 350;
@@ -548,11 +932,22 @@
         best = Math.max(best, score);
         try { localStorage.setItem('pixelRelayCroissantBest', best.toString()); } catch (e) {}
         document.getElementById('best').textContent = best;
-        let victoryText = `Score: ${score} · Best: ${best}<br>Baton warm, crown claimed.`;
-        if (hearthRekindled) victoryText += `<br>HEARTH REKINDLED +100`;
-        if (careBonus > 0) victoryText += `<br>CARE BONUS RETURN +${careBonus}`;
-        if (comboActive) victoryText += `<br>Crumb Crown x${comboCount} +${comboBonus}`;
-        if (perfectBonus) victoryText += `<br>CROISSANT NATION PERFECT RUN +300`;
+        const chain = comboChain.length
+          ? comboChain.map((e) => {
+              const icon = e.type === 'crescent' ? '🌙' : '🔥';
+              return `<span class="combo-bead" title="${e.type}">${icon}</span>`;
+            }).join(' ')
+          : '<span class="combo-bead">—</span>';
+        const victoryText = `<div class="victory-stats">
+          <div class="victory-row"><span class="victory-label">Score</span><span class="victory-value">${score}</span></div>
+          <div class="victory-row"><span class="victory-label">Best</span><span class="victory-value">${best}</span></div>
+          <div class="victory-row"><span class="victory-label">Pearls</span><span class="victory-value">${collected}/${orbs.length}</span></div>
+          ${hearthRekindled ? '<div class="victory-row bonus"><span class="victory-label">Hearth Rekindled</span><span class="victory-value">+100</span></div>' : ''}
+          ${careBonus > 0 ? `<div class="victory-row bonus"><span class="victory-label">Care Bonus Return</span><span class="victory-value">+${careBonus}</span></div>` : ''}
+          ${comboActive ? `<div class="victory-row bonus"><span class="victory-label">Crumb Crown x${comboCount}</span><span class="victory-value">+${comboBonus}</span></div>` : ''}
+          ${perfectBonus ? '<div class="victory-row bonus"><span class="victory-label">Perfect Run</span><span class="victory-value">+300</span></div>' : ''}
+          <div class="victory-chain"><span class="victory-label">Crumb Combo Chain</span><div class="victory-chain-beads">${chain}</div></div>
+        </div>`;
         overlay('CROWN CLAIMED', victoryText, 'BAKE AGAIN');
       } else {
         overlay('OVEN COOLED', `Pearls: ${collected}/${orbs.length} · Best: ${best}<br>Keep the baton warm and reach the crown.`, 'TRY AGAIN');
@@ -568,13 +963,21 @@
     }
 
     function drawCombo() {
-      if (!comboActive) return;
+      if (!comboActive && comboChain.length === 0) return;
       ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
       ctx.fillText(`CRUMB CROWN x${comboCount}`, 16, 30);
       ctx.strokeStyle = '#f7c95c'; ctx.lineWidth = 2;
       ctx.strokeRect(16, 36, 120, 8);
       ctx.fillStyle = `rgba(247, 201, 92, ${0.4 + Math.sin(Date.now()/120)*0.2})`;
       ctx.fillRect(18, 38, 116 * (comboTimer / comboMax), 4);
+      let bx = 146;
+      for (const ev of comboChain.slice(-8)) {
+        ctx.fillStyle = ev.type === 'crescent' ? '#f7c95c' : '#E06A2E';
+        ctx.beginPath(); ctx.arc(bx + 4, 26, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#fff8ee'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(bx + 4, 26, 4, 0, Math.PI * 2); ctx.stroke();
+        bx += 12;
+      }
     }
 
     function drawVictoryGlow() {
@@ -583,6 +986,30 @@
       grad.addColorStop(0, 'rgba(247,201,92,0.35)');
       grad.addColorStop(1, 'rgba(18,14,11,0)');
       ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+    }
+
+    function drawSeamTrace() {
+      if (!bakedSeamTrace) return;
+      ctx.save();
+      ctx.globalAlpha = bakedSeamTrace.alpha;
+      ctx.fillStyle = '#f7c95c'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(bakedSeamTrace.text, W/2, H - 12);
+      bakedSeamTrace.alpha -= 0.002;
+      if (bakedSeamTrace.alpha <= 0) bakedSeamTrace = null;
+      ctx.restore();
+    }
+
+    function drawSeamRitual() {
+      if (!seamRitual) return;
+      const labels = ['PAUSE', 'NAME', 'MARK', 'RETURN'];
+      const label = labels[seamRitual.step] || '';
+      const x = handoffZone.x + handoffZone.w/2;
+      const y = handoffZone.y + handoffZone.h + 18;
+      ctx.save();
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(seamRitual.timer * BPM * Math.PI / 30);
+      ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 12px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`RITUAL: ${label}`, x, y);
+      ctx.restore();
     }
 
     function drawCrumbTrail(dt) {
@@ -614,6 +1041,8 @@
 
     function draw() {
       drawBackground();
+      loadAllSprites();
+      drawCivicSeamCue();
       drawGhostRoute();
       drawTempoCue();
       drawPublicSeams();
@@ -640,13 +1069,20 @@
         ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
         ctx.fillText('CARE BONUS RETURN', W/2, 28);
       }
+      drawSeamRitual();
       drawCombo();
       drawVictoryGlow();
+      drawSeamTrace();
       if (rekindleFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${rekindleFlash * 0.25})`;
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = '#f7c95c'; ctx.font = 'bold 24px monospace'; ctx.textAlign = 'center';
         ctx.fillText('HEARTH REKINDLED', W/2, H/2);
+        if (rekindleCredits) {
+          ctx.fillStyle = `rgba(247, 201, 92, ${rekindleFlash})`;
+          ctx.font = '12px monospace';
+          ctx.fillText(rekindleCredits, W/2, H/2 + 24);
+        }
       }
       if (perfectLayerFlash > 0) {
         ctx.fillStyle = `rgba(247, 201, 92, ${perfectLayerFlash * 0.35})`;
@@ -664,6 +1100,7 @@
       update(dt); draw(); requestAnimationFrame(loop);
     }
 
+    bakePlaceholderSprites();
     makeLevel(); draw();
   </script>
 </body>
