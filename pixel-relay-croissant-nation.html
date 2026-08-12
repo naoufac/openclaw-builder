@@ -89,23 +89,25 @@
     // Sprite manifest — Hardy drops URLs here, code never changes.
     // Anchor size: 16×16 px. Ghost trail strip: 32×16 (3 frames).
     // Palette: outline cocoa #3A2418; crumb gold #F6C85F; oven ember #E06A2E; arch blue-ghost #6FD3FF low alpha.
+    const BASE_SPRITE_URL = 'https://naoufac.github.io/openclaw-builder/sprites/pixel-relay';
     const SPRITE_SOCKETS = {
-      runnerA: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      runnerB: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      platform: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      orb: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      handoffZone: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      crescent: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      hazard: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      goal: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      baton: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      hearthGlow: { sheet: '', frameW: 16, frameH: 16, frames: 1 },
-      ghostTrail: { sheet: '', frameW: 32, frameH: 16, frames: 3 }
+      runnerA: { sheet: `${BASE_SPRITE_URL}/runnerA.png`, frameW: 16, frameH: 16, frames: 1 },
+      runnerB: { sheet: `${BASE_SPRITE_URL}/runnerB.png`, frameW: 16, frameH: 16, frames: 1 },
+      platform: { sheet: `${BASE_SPRITE_URL}/platform.png`, frameW: 16, frameH: 16, frames: 1 },
+      orb: { sheet: `${BASE_SPRITE_URL}/orb.png`, frameW: 16, frameH: 16, frames: 1 },
+      handoffZone: { sheet: `${BASE_SPRITE_URL}/handoffZone.png`, frameW: 16, frameH: 16, frames: 1 },
+      crescent: { sheet: `${BASE_SPRITE_URL}/crescent.png`, frameW: 16, frameH: 16, frames: 1 },
+      hazard: { sheet: `${BASE_SPRITE_URL}/hazard.png`, frameW: 16, frameH: 16, frames: 1 },
+      goal: { sheet: `${BASE_SPRITE_URL}/goal.png`, frameW: 16, frameH: 16, frames: 1 },
+      baton: { sheet: `${BASE_SPRITE_URL}/baton.png`, frameW: 16, frameH: 16, frames: 1 },
+      hearthGlow: { sheet: `${BASE_SPRITE_URL}/hearthGlow.png`, frameW: 16, frameH: 16, frames: 1 },
+      ghostTrail: { sheet: `${BASE_SPRITE_URL}/ghostTrail.png`, frameW: 32, frameH: 16, frames: 3 }
     };
 
     // Placeholder pixel-art sprites generated in-browser so the game renders immediately.
     // Hardy can replace these data URLs with his own PNGs by editing SPRITE_SOCKETS.
     function bakePlaceholderSprites() {
+      // Fallback: only bake any sprite socket that failed to load (sheet empty or URL blank).
       const P = 16;
       function make(w, h, draw) {
         const c = document.createElement('canvas');
@@ -1100,8 +1102,9 @@
       update(dt); draw(); requestAnimationFrame(loop);
     }
 
-    bakePlaceholderSprites();
-    makeLevel(); draw();
+    loadAllSprites();
+    // Fallback: if external sprites are blocked, bake missing ones after a short delay.
+    setTimeout(bakePlaceholderSprites, 800);
   </script>
 </body>
 </html>
