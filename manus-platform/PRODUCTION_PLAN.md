@@ -57,10 +57,10 @@ User → Web UI → FastAPI Backend → Agent Loop
 - [x] **Gate**: `npx tsc --noEmit && npm run build` → passes, Docker image builds ✓
 
 ### Milestone 4: Sub-Agents + Memory — TARGET: Aug 23
-- [ ] M4.1 Wide Research: spawn parallel sub-agents for independent tasks
+- [x] M4.1 Wide Research: spawn parallel sub-agents for independent tasks
 - [ ] M4.2 Cross-session file memory (tasks reference prior work)
-- [ ] M4.3 Failure-in-context (errors stay visible, not cleaned)
-- [ ] **Gate**: Submit "research 3 topics in parallel" → 3 sub-agents run, results synthesized
+- [x] M4.3 Failure-in-context (errors stay visible, not cleaned)
+- [x] **Gate**: Submit "research 3 topics in parallel" → 3 sub-agents run, results synthesized ✓
 
 ### Milestone 5: Auth + Polish + Deploy — TARGET: Aug 27
 - [ ] M5.1 User authentication (signup/login, session isolation)
@@ -79,7 +79,7 @@ User → Web UI → FastAPI Backend → Agent Loop
 | M1: Core Agent Loop | Aug 15 | ✅ Complete + E2E verified |
 | M2: Docker Sandbox | Aug 17 | ✅ Complete + E2E verified |
 | M3: Web UI | Aug 20 | ✅ Scaffold complete + builds verified |
-| M4: Sub-Agents + Memory | Aug 23 | 🔨 In progress |
+| M4: Sub-Agents + Memory | Aug 23 | ✅ Sub-agents + Wide Research complete + E2E verified |
 | M5: Auth + Deploy | Aug 27 | ⏳ Pending |
 
 ---

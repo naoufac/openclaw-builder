@@ -229,6 +229,10 @@ TOOL_TIMEOUT = int(os.getenv("TOOL_TIMEOUT", "120"))  # seconds
 LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "120"))  # seconds
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 
+# Sub-agent settings (M4 — Wide Research)
+MAX_SUBAGENT_DEPTH = int(os.getenv("MAX_SUBAGENT_DEPTH", "2"))
+SUBAGENT_MAX_ITERATIONS = int(os.getenv("SUBAGENT_MAX_ITERATIONS", "10"))
+
 
 def get_provider(model_name: str | None = None) -> ModelProvider:
     """

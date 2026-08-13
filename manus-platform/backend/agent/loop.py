@@ -40,12 +40,16 @@ from agent.todo import (
     parse_todo,
     render_initial_todo,
 )
-from config import MAX_ITERATIONS, SANDBOX_ENABLED, SESSION_WORKSPACE_ROOT
+from config import MAX_ITERATIONS, MAX_SUBAGENT_DEPTH, SANDBOX_ENABLED, SESSION_WORKSPACE_ROOT
 from models.router import ChatMessage, chat_completion, stream_chat_completion
 from sandbox.manager import SandboxManager
 from tools.files import file_list, file_read, file_write
 from tools.shell import run_shell
 from tools.web import web_fetch
+
+# Lazy imports to avoid circular dependency:
+# tools.subagent -> agent.subagent -> agent.loop (this module)
+# We import spawn_subagent_tool / wide_research_tool inside run_agent_loop instead.
 
 
 # ── Event types ────────────────────────────────────────────────────
@@ -92,6 +96,7 @@ class AgentSession:
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     events: list[dict[str, Any]] = field(default_factory=list)
     sandbox: Optional[SandboxManager] = None
+    subagent_depth: int = 0  # M4: recursion depth (0 = top-level, max MAX_SUBAGENT_DEPTH)
 
 
 # ── Tool call parsing ──────────────────────────────────────────────
@@ -213,6 +218,29 @@ async def execute_tool(
             "success": result.success,
             "output": result.to_observation(),
             "tool": "web_fetch",
+        }
+
+    elif tool_name == "spawn_subagent":
+        task_desc = args.get("task", "")
+        if not task_desc:
+            return {"success": False, "output": "No task provided for sub-agent", "tool": "spawn_subagent"}
+        # NOTE: spawn_subagent_tool needs the parent session, not just workspace.
+        # We need to pass it through. We'll use a closure or thread-local.
+        # For now, the tool dispatcher in run_agent_loop handles this specially.
+        return {
+            "success": False,
+            "output": "spawn_subagent must be dispatched from run_agent_loop with session context",
+            "tool": "spawn_subagent",
+        }
+
+    elif tool_name == "wide_research":
+        topics = args.get("topics", [])
+        if not topics:
+            return {"success": False, "output": "No topics provided for wide_research", "tool": "wide_research"}
+        return {
+            "success": False,
+            "output": "wide_research must be dispatched from run_agent_loop with session context",
+            "tool": "wide_research",
         }
 
     elif tool_name == "finish":
@@ -450,8 +478,30 @@ async def run_agent_loop(
                 "args": tool_call.get("args", {}),
             })
 
+            # Extract tool name for dispatch (M4: sub-agent tools need session context)
+            tool_name = tool_call.get("tool", "")
+            args = tool_call.get("args", {})
+
             # Execute the tool
-            result = await execute_tool(tool_call, session.workspace, sandbox=session.sandbox)
+            # Sub-agent tools need session context — dispatch specially (M4)
+            if tool_name == "spawn_subagent":
+                from tools.subagent import spawn_subagent_tool
+                result = await spawn_subagent_tool(
+                    session,
+                    args.get("task", ""),
+                    model=model,
+                    max_iterations=int(args.get("max_iterations", 5)),
+                )
+            elif tool_name == "wide_research":
+                from tools.subagent import wide_research_tool
+                result = await wide_research_tool(
+                    session,
+                    args.get("topics", []),
+                    model=model,
+                    max_iterations=int(args.get("max_iterations", 5)),
+                )
+            else:
+                result = await execute_tool(tool_call, session.workspace, sandbox=session.sandbox)
 
             # Step 4: Observe result (failures stay in context, §5)
             observation = result["output"]

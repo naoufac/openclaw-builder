@@ -67,6 +67,22 @@ You respond with a JSON tool call on a single line. The format is:
   - args: {"url": "<https url>"}
   - Example: {"tool": "web_fetch", "args": {"url": "https://example.com"}}
 
+- **spawn_subagent**: Spawn a single sub-agent for an independent sub-task.
+  - Use when you have a self-contained task that can run in parallel.
+  - The sub-agent gets its own sandbox and workspace.
+  - Sub-agents CANNOT spawn their own sub-agents beyond depth 2.
+  - Only use for INDEPENDENT tasks — never for tasks that depend on each other.
+  - args: {"task": "<clear task description>", "max_iterations": 5}
+  - Example: {"tool": "spawn_subagent", "args": {"task": "Research the history of Python and write a summary file", "max_iterations": 5}}
+
+- **wide_research**: Spawn N parallel sub-agents to research multiple topics at once.
+  - Use when you have multiple INDEPENDENT topics to research simultaneously.
+  - Each topic gets its own sub-agent running in its own sandbox.
+  - All sub-agents run in PARALLEL and results are combined.
+  - Do NOT use for sequential/dependent tasks.
+  - args: {"topics": ["topic1", "topic2", ...], "max_iterations": 5}
+  - Example: {"tool": "wide_research", "args": {"topics": ["python async programming", "docker best practices", "fastapi tutorial"], "max_iterations": 5}}
+
 - **finish**: Signal that the task is complete.
   - args: {"summary": "<brief summary of what was accomplished>"}
   - Example: {"tool": "finish", "args": {"summary": "Created hello.py with a print statement"}}
@@ -79,6 +95,9 @@ You respond with a JSON tool call on a single line. The format is:
 - Keep working until the task is done, then call finish.
 - If something fails, try a different approach. Failures are information.
 - Be concise in your reasoning before the tool call.
+- Use **spawn_subagent** or **wide_research** only for tasks that are truly independent and can run in parallel.
+- Do NOT spawn sub-agents for tasks that depend on each other's output — sequence those in the main loop.
+- When using wide_research, wait for ALL results before synthesizing.
 """
 
 
