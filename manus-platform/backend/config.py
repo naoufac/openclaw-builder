@@ -108,9 +108,12 @@ else:
 
 # ── Sandbox ────────────────────────────────────────────────────────
 
-SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "ubuntu:24.04")
-SANDBOX_WORKSPACE = "/workspace"
+# Docker sandbox image — built from docker/sandbox/Dockerfile
+SANDBOX_IMAGE = os.getenv("SANDBOX_IMAGE", "manus-sandbox:latest")
+SANDBOX_WORKSPACE = os.getenv("SANDBOX_WORKSPACE", "/workspace")
 SANDBOX_TIMEOUT = int(os.getenv("SANDBOX_TIMEOUT", "300"))  # 5 min default
+# Whether sandbox is enabled (set to "0" to run tools on host directly)
+SANDBOX_ENABLED = os.getenv("SANDBOX_ENABLED", "1") != "0"
 
 
 # ── Server ─────────────────────────────────────────────────────────

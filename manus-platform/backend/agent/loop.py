@@ -40,8 +40,9 @@ from agent.todo import (
     parse_todo,
     render_initial_todo,
 )
-from config import MAX_ITERATIONS, SESSION_WORKSPACE_ROOT
+from config import MAX_ITERATIONS, SANDBOX_ENABLED, SESSION_WORKSPACE_ROOT
 from models.router import ChatMessage, chat_completion, stream_chat_completion
+from sandbox.manager import SandboxManager
 from tools.files import file_list, file_read, file_write
 from tools.shell import run_shell
 from tools.web import web_fetch
@@ -90,6 +91,7 @@ class AgentSession:
     result_summary: str = ""
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     events: list[dict[str, Any]] = field(default_factory=list)
+    sandbox: Optional[SandboxManager] = None
 
 
 # ── Tool call parsing ──────────────────────────────────────────────
@@ -143,6 +145,7 @@ def parse_tool_call(llm_output: str) -> Optional[dict[str, Any]]:
 async def execute_tool(
     tool_call: dict[str, Any],
     workspace: str,
+    sandbox: Optional[SandboxManager] = None,
 ) -> dict[str, Any]:
     """
     Execute a parsed tool call and return the observation.
@@ -150,6 +153,7 @@ async def execute_tool(
     Args:
         tool_call: Dict with "tool" and "args" keys.
         workspace: Absolute path to the session workspace.
+        sandbox: Optional sandbox manager for container execution.
 
     Returns:
         Dict with "success", "output", and "tool" keys.
@@ -161,7 +165,7 @@ async def execute_tool(
         command = args.get("command", "")
         if not command:
             return {"success": False, "output": "No command provided", "tool": "shell"}
-        result = await run_shell(command, cwd=workspace)
+        result = await run_shell(command, cwd=workspace, sandbox=sandbox)
         return {
             "success": result.success,
             "output": result.to_observation(),
@@ -253,7 +257,7 @@ async def generate_initial_todo(goal: str) -> str:
         return render_initial_todo_from_text(content)
 
     except Exception as exc:
-        log.warning("LLM unavailable for todo generation, using fallback", error=str(exc))
+        log.warning("LLM unavailable for todo generation, using fallback: %s", exc)
         return render_initial_todo([
             "Analyze the goal and determine what needs to be done",
             "Execute the necessary steps to accomplish the goal",
@@ -319,6 +323,34 @@ async def run_agent_loop(
     workspace_path = Path(session.workspace)
     workspace_path.mkdir(parents=True, exist_ok=True)
 
+    # Create Docker sandbox (M2)
+    if SANDBOX_ENABLED:
+        session.sandbox = SandboxManager(
+            session_id=session.session_id,
+            workspace_host=str(workspace_path),
+        )
+        try:
+            await session.sandbox.create()
+            await emit(EventType.TOOL_RESULT, {
+                "tool": "sandbox",
+                "success": True,
+                "output": f"Sandbox container created: {session.sandbox.container_name}",
+            })
+        except Exception as exc:
+            # Sandbox creation failed — mark session as failed
+            error_msg = f"Sandbox creation failed: {exc}"
+            log.error(error_msg)
+            session.status = SessionStatus.FAILED
+            session.result_summary = error_msg
+            await emit(EventType.ERROR, {"error": error_msg, "iteration": 0})
+            await emit(EventType.COMPLETE, {
+                "status": "failed",
+                "summary": error_msg,
+            })
+            return
+    else:
+        session.sandbox = None
+
     session.status = SessionStatus.RUNNING
 
     # Generate todo.md (Manus discipline §4)
@@ -337,143 +369,149 @@ async def run_agent_loop(
     )
 
     # ── Main loop ──
-    for iteration in range(1, MAX_ITERATIONS + 1):
-        session.iteration = iteration
+    try:
+        for iteration in range(1, MAX_ITERATIONS + 1):
+            session.iteration = iteration
 
-        await emit(EventType.ITERATION, {"iteration": iteration})
+            await emit(EventType.ITERATION, {"iteration": iteration})
 
-        # Step 1: Read todo.md (recency bias mitigation, §4)
-        try:
-            todo_content = (workspace_path / "todo.md").read_text(encoding="utf-8")
-            session.todo_markdown = todo_content
-            session.context.update_todo(todo_content)
-            todo_state = parse_todo(todo_content)
-        except FileNotFoundError:
-            pass  # Use cached version
+            # Step 1: Read todo.md (recency bias mitigation, §4)
+            try:
+                todo_content = (workspace_path / "todo.md").read_text(encoding="utf-8")
+                session.todo_markdown = todo_content
+                session.context.update_todo(todo_content)
+                todo_state = parse_todo(todo_content)
+            except FileNotFoundError:
+                pass  # Use cached version
 
-        # Check completion
-        if todo_state.is_complete:
-            session.status = SessionStatus.COMPLETED
-            session.result_summary = "All todo steps completed."
-            await emit(EventType.COMPLETE, {
-                "status": "completed",
-                "summary": session.result_summary,
-                "iteration": iteration,
+            # Check completion
+            if todo_state.is_complete:
+                session.status = SessionStatus.COMPLETED
+                session.result_summary = "All todo steps completed."
+                await emit(EventType.COMPLETE, {
+                    "status": "completed",
+                    "summary": session.result_summary,
+                    "iteration": iteration,
+                })
+                return
+
+            # Mark next pending step as in-progress
+            if todo_state.next_pending:
+                todo_state = mark_in_progress(todo_state, todo_state.next_pending.number)
+                new_md = todo_state.to_markdown()
+                session.todo_markdown = new_md
+                session.context.update_todo(new_md)
+                (workspace_path / "todo.md").write_text(new_md, encoding="utf-8")
+                await emit(EventType.TODO_UPDATE, {"todo": new_md})
+
+            # Step 2: Build context & call LLM
+            messages = session.context.to_messages()
+
+            try:
+                response = await chat_completion(messages, model=model, temperature=0.0)
+                llm_output = response.content
+            except Exception as exc:
+                # Keep failure in context (§5)
+                error_msg = f"[LLM call failed: {exc}]"
+                session.context.append_observation(error_msg)
+                await emit(EventType.ERROR, {"error": str(exc), "iteration": iteration})
+                # Retry on next iteration if we haven't exhausted attempts
+                if iteration >= MAX_ITERATIONS:
+                    session.status = SessionStatus.FAILED
+                    session.result_summary = f"LLM failed after {MAX_ITERATIONS} iterations: {exc}"
+                    await emit(EventType.COMPLETE, {
+                        "status": "failed",
+                        "summary": session.result_summary,
+                    })
+                    return
+                continue
+
+            # Step 3: Parse & execute tool call
+            tool_call = parse_tool_call(llm_output)
+
+            if tool_call is None:
+                # LLM didn't produce a valid tool call — nudge it
+                session.context.append_assistant(llm_output)
+                session.context.append_observation(
+                    "Your last response did not contain a valid JSON tool call. "
+                    "Please respond with exactly one tool call in JSON format."
+                )
+                await emit(EventType.THOUGHT, {
+                    "content": llm_output[:500],
+                    "note": "No valid tool call detected",
+                })
+                continue
+
+            # Record the assistant's action
+            session.context.append_assistant(llm_output)
+
+            await emit(EventType.TOOL_CALL, {
+                "tool": tool_call.get("tool"),
+                "args": tool_call.get("args", {}),
             })
-            return
 
-        # Mark next pending step as in-progress
-        if todo_state.next_pending:
-            todo_state = mark_in_progress(todo_state, todo_state.next_pending.number)
+            # Execute the tool
+            result = await execute_tool(tool_call, session.workspace, sandbox=session.sandbox)
+
+            # Step 4: Observe result (failures stay in context, §5)
+            observation = result["output"]
+            session.context.append_observation(observation)
+
+            await emit(EventType.TOOL_RESULT, {
+                "tool": result["tool"],
+                "success": result["success"],
+                "output": observation[:2000],  # Truncate for event
+            })
+
+            # Check for finish tool
+            if result["output"] == "__FINISH__":
+                # Mark all remaining steps as completed
+                for step in todo_state.steps:
+                    if step.status in (StepStatus.PENDING, StepStatus.IN_PROGRESS):
+                        todo_state = mark_completed(todo_state, step.number)
+
+                new_md = todo_state.to_markdown()
+                session.todo_markdown = new_md
+                (workspace_path / "todo.md").write_text(new_md, encoding="utf-8")
+                await emit(EventType.TODO_UPDATE, {"todo": new_md})
+
+                session.status = SessionStatus.COMPLETED
+                session.result_summary = result.get("summary", "Task completed via finish tool")
+                await emit(EventType.COMPLETE, {
+                    "status": "completed",
+                    "summary": session.result_summary,
+                    "iteration": iteration,
+                })
+                return
+
+            # Step 5: Update todo.md
+            current_step = todo_state.current_step
+            if current_step:
+                if result["success"]:
+                    todo_state = mark_completed(todo_state, current_step.number)
+                else:
+                    # Keep failure in context — don't immediately mark as failed
+                    # Let the agent retry or try a different approach
+                    pass
+
             new_md = todo_state.to_markdown()
             session.todo_markdown = new_md
             session.context.update_todo(new_md)
             (workspace_path / "todo.md").write_text(new_md, encoding="utf-8")
             await emit(EventType.TODO_UPDATE, {"todo": new_md})
 
-        # Step 2: Build context & call LLM
-        messages = session.context.to_messages()
-
-        try:
-            response = await chat_completion(messages, model=model, temperature=0.0)
-            llm_output = response.content
-        except Exception as exc:
-            # Keep failure in context (§5)
-            error_msg = f"[LLM call failed: {exc}]"
-            session.context.append_observation(error_msg)
-            await emit(EventType.ERROR, {"error": str(exc), "iteration": iteration})
-            # Retry on next iteration if we haven't exhausted attempts
-            if iteration >= MAX_ITERATIONS:
-                session.status = SessionStatus.FAILED
-                session.result_summary = f"LLM failed after {MAX_ITERATIONS} iterations: {exc}"
-                await emit(EventType.COMPLETE, {
-                    "status": "failed",
-                    "summary": session.result_summary,
-                })
-                return
-            continue
-
-        # Step 3: Parse & execute tool call
-        tool_call = parse_tool_call(llm_output)
-
-        if tool_call is None:
-            # LLM didn't produce a valid tool call — nudge it
-            session.context.append_assistant(llm_output)
-            session.context.append_observation(
-                "Your last response did not contain a valid JSON tool call. "
-                "Please respond with exactly one tool call in JSON format."
-            )
-            await emit(EventType.THOUGHT, {
-                "content": llm_output[:500],
-                "note": "No valid tool call detected",
-            })
-            continue
-
-        # Record the assistant's action
-        session.context.append_assistant(llm_output)
-
-        await emit(EventType.TOOL_CALL, {
-            "tool": tool_call.get("tool"),
-            "args": tool_call.get("args", {}),
+        # ── Exhausted iterations ──
+        session.status = SessionStatus.FAILED
+        session.result_summary = f"Reached max iterations ({MAX_ITERATIONS}) without completion."
+        await emit(EventType.COMPLETE, {
+            "status": "failed",
+            "summary": session.result_summary,
         })
-
-        # Execute the tool
-        result = await execute_tool(tool_call, session.workspace)
-
-        # Step 4: Observe result (failures stay in context, §5)
-        observation = result["output"]
-        session.context.append_observation(observation)
-
-        await emit(EventType.TOOL_RESULT, {
-            "tool": result["tool"],
-            "success": result["success"],
-            "output": observation[:2000],  # Truncate for event
-        })
-
-        # Check for finish tool
-        if result["output"] == "__FINISH__":
-            # Mark all remaining steps as completed
-            for step in todo_state.steps:
-                if step.status in (StepStatus.PENDING, StepStatus.IN_PROGRESS):
-                    todo_state = mark_completed(todo_state, step.number)
-
-            new_md = todo_state.to_markdown()
-            session.todo_markdown = new_md
-            (workspace_path / "todo.md").write_text(new_md, encoding="utf-8")
-            await emit(EventType.TODO_UPDATE, {"todo": new_md})
-
-            session.status = SessionStatus.COMPLETED
-            session.result_summary = result.get("summary", "Task completed via finish tool")
-            await emit(EventType.COMPLETE, {
-                "status": "completed",
-                "summary": session.result_summary,
-                "iteration": iteration,
-            })
-            return
-
-        # Step 5: Update todo.md
-        current_step = todo_state.current_step
-        if current_step:
-            if result["success"]:
-                todo_state = mark_completed(todo_state, current_step.number)
-            else:
-                # Keep failure in context — don't immediately mark as failed
-                # Let the agent retry or try a different approach
-                pass
-
-        new_md = todo_state.to_markdown()
-        session.todo_markdown = new_md
-        session.context.update_todo(new_md)
-        (workspace_path / "todo.md").write_text(new_md, encoding="utf-8")
-        await emit(EventType.TODO_UPDATE, {"todo": new_md})
-
-    # ── Exhausted iterations ──
-    session.status = SessionStatus.FAILED
-    session.result_summary = f"Reached max iterations ({MAX_ITERATIONS}) without completion."
-    await emit(EventType.COMPLETE, {
-        "status": "failed",
-        "summary": session.result_summary,
-    })
+    finally:
+        # Destroy sandbox container on session end (M2.4)
+        if session.sandbox is not None:
+            log.info("Destroying sandbox", name=session.sandbox.container_name)
+            await session.sandbox.destroy()
 
 
 # ── Session factory ────────────────────────────────────────────────

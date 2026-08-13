@@ -3,6 +3,10 @@ File system tools.
 
 Provides read, write, and list operations for the agent workspace.
 All operations are confined to the session workspace directory.
+
+In M2 (Docker sandbox), the workspace host path is bind-mounted into
+the sandbox container at ``/workspace``.  Host-side file operations
+are immediately reflected inside the container and vice-versa.
 """
 
 from __future__ import annotations
@@ -33,15 +37,27 @@ def _safe_path(workspace: str, rel_path: str) -> Path:
     """
     Resolve *rel_path* inside *workspace*, preventing path traversal.
 
+    Ensures the resolved path stays under the session workspace root
+    (M2.3 — file system isolation).
+
     Raises:
         ValueError: If the resolved path escapes the workspace.
     """
     workspace_abs = Path(workspace).resolve()
-    target = (workspace_abs / rel_path).resolve()
 
-    # Prevent path traversal
-    if not str(target).startswith(str(workspace_abs)):
-        raise ValueError(f"Path '{rel_path}' escapes workspace boundary")
+    # If rel_path is already absolute and starts with the workspace, use as-is
+    if rel_path.startswith("/"):
+        target = Path(rel_path).resolve()
+    else:
+        target = (workspace_abs / rel_path).resolve()
+
+    # Prevent path traversal — target must be under workspace
+    try:
+        target.relative_to(workspace_abs)
+    except ValueError:
+        raise ValueError(
+            f"Path '{rel_path}' escapes workspace boundary '{workspace_abs}'"
+        )
     return target
 
 
