@@ -990,7 +990,7 @@
       ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
     }
 
-    function drawSeamTrace() {
+    window.drawSeamTrace = function drawSeamTrace() {
       if (!bakedSeamTrace) return;
       ctx.save();
       ctx.globalAlpha = bakedSeamTrace.alpha;
