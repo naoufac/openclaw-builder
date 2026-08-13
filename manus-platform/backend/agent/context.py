@@ -167,7 +167,20 @@ class AgentContext:
         The prefix is rebuilt fresh each call (todo.md is current).
         The working area messages retain their order (append-only).
         """
-        return self._build_prefix() + list(self.working_area)
+        messages = self._build_prefix() + list(self.working_area)
+
+        # Some providers (zai/GLM) reject a conversation with only a system message.
+        # Ensure there is always at least one user message.
+        if not messages or all(m.role == "system" for m in messages):
+            messages.append(
+                ChatMessage(role="user", content="Begin working on the task.")
+            )
+        elif messages[-1].role == "system":
+            messages.append(
+                ChatMessage(role="user", content="Continue working on the task.")
+            )
+
+        return messages
 
     # ── Summary ──
 

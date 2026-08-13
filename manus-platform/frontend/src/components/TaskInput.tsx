@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import type { TaskResponse } from '../types';
 
 interface TaskInputProps {
-  onSubmit: (sessionId: string) => void;
+  onSubmit: (sessionId: string, goal: string) => void;
 }
 
 export function TaskInput({ onSubmit }: TaskInputProps) {
@@ -32,7 +32,7 @@ export function TaskInput({ onSubmit }: TaskInputProps) {
         }
 
         const data: TaskResponse = await res.json();
-        onSubmit(data.session_id);
+        onSubmit(data.session_id, trimmed);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);

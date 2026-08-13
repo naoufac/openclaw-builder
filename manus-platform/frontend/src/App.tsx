@@ -5,13 +5,16 @@ import { useAgentStream } from './hooks/useAgentStream';
 
 export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [currentGoal, setCurrentGoal] = useState<string>('');
 
-  const handleTaskSubmit = useCallback((sid: string) => {
+  const handleTaskSubmit = useCallback((sid: string, goal: string) => {
+    setCurrentGoal(goal);
     setSessionId(sid);
   }, []);
 
   const handleNewTask = useCallback(() => {
     setSessionId(null);
+    setCurrentGoal('');
   }, []);
 
   const stream = useAgentStream(sessionId);
@@ -50,6 +53,12 @@ export default function App() {
           <div className="workspace-layout">
             {/* Left: Task input + session info */}
             <aside className="left-panel">
+              {currentGoal && (
+                <div className="active-goal-card">
+                  <h3 className="panel-title-sm">🎯 Current Task</h3>
+                  <p className="active-goal-text">{currentGoal}</p>
+                </div>
+              )}
               <TaskInput onSubmit={handleTaskSubmit} />
             </aside>
 

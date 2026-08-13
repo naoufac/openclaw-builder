@@ -17,6 +17,18 @@ export interface AgentEvent {
   tool?: string;
 }
 
+/**
+ * Raw event as received from the backend WebSocket.
+ * The backend sends objects for some event types; the hook normalizes these
+ * to AgentEvent (data is always a string) before rendering.
+ */
+export interface RawAgentEvent {
+  type: EventType;
+  data: string | Record<string, any>;
+  timestamp: number | string;
+  tool?: string;
+}
+
 export interface AgentStreamState {
   events: AgentEvent[];
   thoughts: AgentEvent[];

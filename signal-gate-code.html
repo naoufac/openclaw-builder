@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Signal Gate — Reactive Arch</title>
+<style>
+  :root { --bg:#0b0c10; --gate:#66fcf1; --gate-dim:#45a29e; --noise:#c5c6c7; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--noise); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  svg { width:min(90vw,512px); height:auto; }
+  .label { margin-top:1rem; font-size:0.85rem; opacity:0.7; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" id="gate">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g id="skyline" opacity="0.35"></g>
+  <g id="arch" filter="url(#glow)">
+    <rect x="56" y="180" width="12" height="60" fill="var(--gate-dim)" class="pillar"/>
+    <rect x="188" y="180" width="12" height="60" fill="var(--gate-dim)" class="pillar"/>
+    <path d="M62 180 V120 Q62 50 128 50 Q194 50 194 120 V180" fill="none" stroke="var(--gate)" stroke-width="4" stroke-linecap="round" id="arch-path"/>
+    <circle cx="128" cy="110" r="3" fill="var(--noise)" opacity="0.6"/>
+  </g>
+  <g id="sparkles"></g>
+</svg>
+<div class="label">noise: <span id="noise-level">quiet</span> · glow: <span id="glow-level">high</span></div>
+<script>
+  const archPath = document.getElementById('arch-path');
+  const sparkles = document.getElementById('sparkles');
+  const noiseLabel = document.getElementById('noise-level');
+  const glowLabel = document.getElementById('glow-level');
+  const skyline = document.getElementById('skyline');
+  for (let i=0;i<20;i++) skyline.appendChild(Object.assign(document.createElementNS('http://www.w3.org/2000/svg','rect'),{x:10+i*12,y:210-Math.random()*40,width:6,height:60,fill:'#1f2833'}));
+  let t=0;
+  const palette=['#66fcf1','#45a29e','#9c27b0','#ffeb3b','#03a9f4'];
+  function loop(){
+    t+=0.02;
+    const noise = (Math.sin(t*0.7)+Math.sin(t*1.3)+Math.sin(t*2.1)+3)/6;
+    const quiet = 1-noise;
+    const hueShift = Math.floor(quiet*120);
+    const color = `hsl(${170+hueShift}, 90%, ${50+quiet*30}%)`;
+    archPath.setAttribute('stroke', color);
+    archPath.setAttribute('stroke-width', 2+quiet*5);
+    noiseLabel.textContent = noise>0.65?'loud':noise>0.35?'murmur':'quiet';
+    glowLabel.textContent = quiet>0.65?'high':quiet>0.35?'steady':'dim';
+    sparkles.innerHTML='';
+    if (quiet>0.45) for(let i=0;i<Math.floor(quiet*10);i++){
+      const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', 80+Math.random()*96);
+      c.setAttribute('cy', 70+Math.random()*100);
+      c.setAttribute('r', 0.5+Math.random()*1.5);
+      c.setAttribute('fill', palette[Math.floor(Math.random()*palette.length)]);
+      c.setAttribute('opacity', quiet*Math.random());
+      sparkles.appendChild(c);
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+</script>
+</body>
+</html>

@@ -116,7 +116,10 @@ body {
 
 .app-main {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===== Welcome Screen ===== */
@@ -125,7 +128,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   padding: 40px;
   gap: 32px;
 }
@@ -264,7 +267,8 @@ body {
 /* ===== Workspace Layout ===== */
 .workspace-layout {
   display: flex;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -279,7 +283,10 @@ body {
 
 .right-panel {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===== Agent View ===== */
@@ -341,6 +348,28 @@ body {
 .agent-panel-files {
   width: 240px;
   flex-shrink: 0;
+}
+
+/* ===== Active Goal Card (workspace left panel) ===== */
+.active-goal-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.active-goal-card .panel-title-sm {
+  margin-bottom: 6px;
+}
+
+.active-goal-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  word-break: break-word;
+  margin: 0;
 }
 
 /* ===== Shared Panel Styles ===== */
