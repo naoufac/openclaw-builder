@@ -85,6 +85,9 @@ async def chat_completion(
     """
     provider = get_provider(model)
     effective_model = model or provider.default_model
+    # Strip optional "provider/" prefix from model identifier (e.g. "zai/glm-5.2")
+    if "/" in effective_model:
+        effective_model = effective_model.split("/", 1)[1]
     url = f"{provider.base_url.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {provider.api_key}",
@@ -151,6 +154,9 @@ async def stream_chat_completion(
     """
     provider = get_provider(model)
     effective_model = model or provider.default_model
+    # Strip optional "provider/" prefix from model identifier (e.g. "zai/glm-5.2")
+    if "/" in effective_model:
+        effective_model = effective_model.split("/", 1)[1]
     url = f"{provider.base_url.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {provider.api_key}",
