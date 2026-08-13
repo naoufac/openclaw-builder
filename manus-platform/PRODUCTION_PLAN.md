@@ -79,7 +79,7 @@ User → Web UI → FastAPI Backend → Agent Loop
 | M1: Core Agent Loop | Aug 15 | ✅ Complete + E2E verified |
 | M2: Docker Sandbox | Aug 17 | ✅ Complete + E2E verified |
 | M3: Web UI | Aug 20 | ✅ Scaffold complete + builds verified |
-| M4: Sub-Agents + Memory | Aug 23 | 🔨 Next |
+| M4: Sub-Agents + Memory | Aug 23 | 🔨 In progress |
 | M5: Auth + Deploy | Aug 27 | ⏳ Pending |
 
 ---
