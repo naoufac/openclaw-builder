@@ -5,35 +5,65 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:8800:8000"
+    image: manus-platform-backend:latest
+    container_name: manus-platform-backend
+    # Do not expose backend port publicly; frontend proxies /api and /ws
+    networks:
+      - manus-platform
     environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - ZAI_API_KEY=${ZAI_API_KEY:-}
-      - KIMI_API_KEY=${KIMI_API_KEY:-}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - SESSION_WORKSPACE_ROOT=/app/sessions
       - SANDBOX_IMAGE=manus-sandbox:latest
-      - WORKSPACE_DIR=/data/sessions
+      - SANDBOX_ENABLED=1
+      - MAX_ITERATIONS=30
+      - TOOL_TIMEOUT=120
+      - LLM_TIMEOUT=120
+      - LLM_MAX_TOKENS=4096
+      - MAX_SUBAGENT_DEPTH=2
+      - SUBAGENT_MAX_ITERATIONS=10
     volumes:
-      - session-data:/data/sessions
+      - manus-sessions:/app/sessions
       - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.openclaw:/root/.openclaw:ro
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: manus-platform-frontend:latest
+    container_name: manus-platform-frontend
     ports:
       - "127.0.0.1:8801:80"
+    networks:
+      - manus-platform
     depends_on:
       - backend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   sandbox-base:
     build:
       context: ./docker/sandbox
       dockerfile: Dockerfile
     image: manus-sandbox:latest
+    networks:
+      - manus-platform
+
+networks:
+  manus-platform:
+    name: manus-platform
 
 volumes:
-  session-data:
+  manus-sessions:
+    name: manus-sessions

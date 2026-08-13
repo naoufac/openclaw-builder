@@ -1,0 +1,72 @@
+# Manus Platform — Caddy reverse proxy configuration
+
+Add this block to `/etc/caddy/Caddyfile` on the Anouf host (135.181.44.161).
+
+```caddyfile
+# Manus Platform — AI agent workspace
+manus.gab44.com, www.manus.gab44.com {
+	bind 135.181.44.161
+
+	# Temporary basic auth until app-level auth is deployed
+	basic_auth {
+		nao <BASIC_AUTH_HASH>
+	}
+
+	reverse_proxy 127.0.0.1:8801
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	# WebSocket for /ws streaming
+	@websocket {
+		path /ws/*
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket 127.0.0.1:8801
+}
+
+# Manus Platform — temporary sslip.io fallback until DNS is updated
+manus.135.181.44.161.sslip.io {
+	bind 135.181.44.161
+
+	basic_auth {
+		nao <BASIC_AUTH_HASH>
+	}
+
+	reverse_proxy 127.0.0.1:8801
+	encode gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	@websocket {
+		path /ws/*
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	reverse_proxy @websocket 127.0.0.1:8801
+}
+```
+
+Generate the hash with:
+
+```bash
+caddy hash-password -p 'your_password'
+```
+
+Then replace `<BASIC_AUTH_HASH>` in both blocks and reload Caddy:
+
+```bash
+caddy reload --config /etc/caddy/Caddyfile
+```
+
+## DNS
+
+For `manus.gab44.com`, add an A record pointing to `135.181.44.161`.
+Until then, use the temporary `manus.135.181.44.161.sslip.io` URL.
