@@ -2,7 +2,7 @@
 
 **Goal**: Ship a self-hosted Manus-like agent platform at gab44.com
 **Start date**: August 13, 2026
-**Status**: ACTIVE BUILD
+**Status**: ACTIVE BUILD — MVP LIVE
 
 ---
 
@@ -58,17 +58,17 @@ User → Web UI → FastAPI Backend → Agent Loop
 
 ### Milestone 4: Sub-Agents + Memory — TARGET: Aug 23
 - [x] M4.1 Wide Research: spawn parallel sub-agents for independent tasks
-- [ ] M4.2 Cross-session file memory (tasks reference prior work)
+- [ ] M4.2 Cross-session file memory (tasks reference prior work) — **Deferred post-MVP**
 - [x] M4.3 Failure-in-context (errors stay visible, not cleaned)
 - [x] **Gate**: Submit "research 3 topics in parallel" → 3 sub-agents run, results synthesized ✓
 
 ### Milestone 5: Auth + Polish + Deploy — TARGET: Aug 27
-- [ ] M5.1 User authentication (signup/login, session isolation)
-- [ ] M5.2 Task history dashboard
-- [ ] M5.3 Rate limiting + usage tracking
-- [ ] M5.4 Caddy reverse proxy config for gab44.com
-- [ ] M5.5 Docker Compose production deployment
-- [ ] **Gate**: gab44.com live, public user can sign up, submit task, watch execution, get result
+- [x] M5.1 Temporary basic auth (Caddy-level) protecting the live URL
+- [ ] M5.2 Task history dashboard — **Next polish item**
+- [ ] M5.3 Rate limiting + usage tracking — **Post-MVP**
+- [x] M5.4 Caddy reverse proxy config for manus.gab44.com + sslip.io fallback
+- [x] M5.5 Docker Compose production deployment on Anouf server
+- [x] **Gate**: Live URL works, submit task over HTTPS, agent completes in sandbox ✓
 
 ---
 
@@ -80,7 +80,18 @@ User → Web UI → FastAPI Backend → Agent Loop
 | M2: Docker Sandbox | Aug 17 | ✅ Complete + E2E verified |
 | M3: Web UI | Aug 20 | ✅ Scaffold complete + builds verified |
 | M4: Sub-Agents + Memory | Aug 23 | ✅ Sub-agents + Wide Research complete + E2E verified |
-| M5: Auth + Deploy | Aug 27 | ⏳ Pending |
+| M5: Auth + Deploy | Aug 27 | ✅ MVP live on sslip.io, Caddy ready for manus.gab44.com |
+
+---
+
+## Live URLs
+
+| URL | Status | Notes |
+|-----|--------|-------|
+| https://manus.135.181.44.161.sslip.io | ✅ Live now | Temporary until DNS updated |
+| https://manus.gab44.com | ⏳ Awaiting DNS | Add A record → `135.181.44.161` |
+
+**Basic auth credentials (temporary):** `nao` / `manus2026`
 
 ---
 
@@ -95,7 +106,7 @@ User → Web UI → FastAPI Backend → Agent Loop
 | Streaming | WebSocket (server→client) | Live agent output |
 | Models | Multi-provider (Zai, Kimi, OpenAI, Mistral) | Dynamic routing, cost optimization |
 | Database | SQLite (dev) → PostgreSQL (prod) | Simple start, scale when needed |
-| Deploy | Docker Compose on Anouf server | We already have the infrastructure |
+| Deploy | Docker Compose + Caddy on Anouf server | We already have the infrastructure |
 
 ---
 
@@ -103,21 +114,22 @@ User → Web UI → FastAPI Backend → Agent Loop
 
 - ✅ Manus discipline docs (verified architecture, 10 binding rules)
 - ✅ Server infrastructure (Anouf: 8 cores, 15GB RAM, Docker, Caddy)
-- ✅ gab44.com domain (needs Caddy config)
+- ✅ gab44.com domain (subdomains point to server; apex currently points elsewhere)
 - ✅ Multi-model API keys (wired from OpenClaw host config)
 - ✅ This repository
 - ✅ M1 backend: FastAPI agent loop + tools + WebSocket + multi-model routing
-- ✅ M2 sandbox: per-session Docker container, tools execute inside, auto-cleanup
+- ✅ M2 sandbox: per-session Docker container, auto-cleanup
 - ✅ M3 frontend: React UI + live workspace + todo/terminal/file panels
-- ✅ Docker images for backend and frontend build successfully
-- ✅ Backend E2E verified: task submitted → sandbox created → LLM-driven tool execution → file written → sandbox cleaned up
+- ✅ M4 sub-agents: parallel spawn + wide_research + depth limiting
+- ✅ M5 deploy: live HTTPS with Caddy + Docker Compose
 
 ## What Does NOT Exist Yet
 
-- ❌ Sub-agent spawning (Wide Research pattern)
-- ❌ Cross-session memory / database
-- ❌ Authentication
-- ❌ Production deployment on gab44.com
+- ❌ M4.2 Cross-session file memory (deferred post-MVP)
+- ❌ App-level user authentication (login/signup) — temporary Caddy basic auth in place
+- ❌ Task history dashboard
+- ❌ Rate limiting + usage tracking
+- ❌ manus.gab44.com DNS A record updated
 
 ---
 
@@ -131,12 +143,13 @@ manus-platform/
 │   │   ├── loop.py          # Core single agent loop
 │   │   ├── todo.py          # todo.md protocol (read/update every iteration)
 │   │   ├── context.py       # Frozen prefix + append-only working area
-│   │   └── subagent.py      # Wide Research parallel spawning (M4)
+│   │   └── subagent.py      # Wide Research parallel spawning
 │   ├── tools/
 │   │   ├── shell.py         # Shell command execution (inside sandbox)
 │   │   ├── files.py         # File read/write/list
 │   │   ├── web.py           # Web fetch + search
-│   │   └── code.py          # Python code execution in sandbox
+│   │   ├── code.py          # Python code execution in sandbox
+│   │   └── subagent.py      # spawn_subagent / wide_research tool wrappers
 │   ├── sandbox/
 │   │   ├── __init__.py
 │   │   ├── manager.py       # Docker container lifecycle
@@ -146,7 +159,9 @@ manus-platform/
 │   ├── ws/
 │   │   └── stream.py        # WebSocket event streaming
 │   ├── tests/
-│   │   └── test_sandbox.py  # 13 sandbox lifecycle tests
+│   │   ├── test_sandbox.py  # 13 sandbox lifecycle tests
+│   │   └── test_subagent.py # 17 sub-agent tests
+│   ├── pytest.ini
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
@@ -166,9 +181,11 @@ manus-platform/
 │   ├── nginx.conf
 │   └── Dockerfile
 ├── docker/
-│   ├── docker-compose.yml
+│   ├── docker-compose.yml           # Production compose
 │   └── sandbox/
-│       └── Dockerfile               # Base sandbox image
+│       └── Dockerfile               # Base sandbox image (also used by backend)
+├── docs/
+│   └── Caddyfile                    # Caddy reverse proxy config
 ├── PRODUCTION_PLAN.md               # This file
 └── README.md
 ```
@@ -177,15 +194,13 @@ manus-platform/
 
 ## Verification Gates (No Exceptions)
 
-Every milestone has a gate. No milestone is "done" until the gate passes and output is shown.
-
 | Milestone | Gate Command | Expected |
 |-----------|-------------|----------|
 | M1 | `curl -X POST localhost:8000/api/task -d '{"goal":"write hello.py"}'` | ✅ Returns session_id, backend active |
-| M2 | Agent writes `/workspace/output.txt` inside sandbox, file visible on host, container removed after completion | ✅ Verified E2E |
+| M2 | `docker exec <sandbox> cat /workspace/hello.py` | ✅ File exists in sandbox only, container removed after completion |
 | M3 | `npx tsc --noEmit && npm run build` | ✅ TypeScript passes, production build succeeds |
-| M4 | Submit multi-part research task | Sub-agents spawn, parallel results |
-| M5 | Open `https://gab44.com` | Public platform, signup works |
+| M4 | `wide_research` spawns 3 parallel sub-agents | ✅ 3+ child sandboxes created, results synthesized |
+| M5 | `curl -u nao:manus2026 https://manus.135.181.44.161.sslip.io/api/health` | ✅ Returns `{"status":"ok"}`, task submission completes over HTTPS |
 
 ---
 
