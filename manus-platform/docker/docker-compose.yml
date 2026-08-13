@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8800:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ZAI_API_KEY=${ZAI_API_KEY:-}
+      - KIMI_API_KEY=${KIMI_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - SANDBOX_IMAGE=manus-sandbox:latest
+      - WORKSPACE_DIR=/data/sessions
+    volumes:
+      - session-data:/data/sessions
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8801:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  sandbox-base:
+    build:
+      context: ./docker/sandbox
+      dockerfile: Dockerfile
+    image: manus-sandbox:latest
+
+volumes:
+  session-data:
