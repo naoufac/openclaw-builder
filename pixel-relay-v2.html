@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pixel Relay v2.4 — openclaw-builder & Hardy</title>
+  <title>Pixel Relay v2.5 — openclaw-builder & Hardy</title>
   <style>
     :root { --bg: #0b0b12; --panel: #161622; --p1: #ff2a6d; --p2: #05d9e8; --accent: #8aff5b; --text: #e0e0f0; }
     body {
@@ -37,8 +37,8 @@
   </style>
 </head>
 <body>
-  <h1>PIXEL RELAY v2.4</h1>
-  <p class="sub">Two runners, one baton, handoffs · openclaw-builder + Hardy</p>
+  <h1>PIXEL RELAY v2.5</h1>
+  <p class="sub">Two runners, one baton, handoffs · openclaw-builder + Hardy · scene art live</p>
   <div id="hud">
     <span class="p1">RUNNER A: <b id="s1">ready</b></span>
     <span>TIME: <b id="time">60</b></span>
@@ -63,7 +63,7 @@
     <b>Runner A (magenta)</b> starts with the baton. Reach the handoff zone with both runners and press <b>H</b> to pass.
     Then <b>Runner B (cyan)</b> carries it to the goal. Clean handoff with no spike hits spawns a crescent bonus worth +5 seconds.
     Chain crescent pickups for a CRUMB COMBO and aim for a PERFECT RUN (all orbs, no spikes) for +250.
-    Sprite hooks are ready for Hardy’s pixel-art pass. Add-on idea: croissantman.
+    Sprite hooks are ready for Hardy’s pixel-art pass; the current Pixel Atelier delivery is wired as the background scene. Add-on idea: croissantman.
   </div>
 
   <script>
@@ -72,7 +72,11 @@
     const W = canvas.width, H = canvas.height;
     const GRAVITY = 0.55, JUMP = -10.5, SPEED = 4, FRICTION = 0.78;
 
-    // sprite manifest — replace public_url values with Hardy's Pixel Atelier artifact links
+    // Sprite manifest — assets are downloaded from Hardy's Pixel Atelier delivery.
+    // The current delivery is a single 1024x1024 scene/illustration containing
+    // multiple runner poses; it is wired into drawBackground as the stage art.
+    // Separated sprites for runner frames, platforms, hazards, orbs, crescent,
+    // goal, and handoff zone will be added when Hardy delivers a sprite sheet.
     const SPRITES = {
       runner_a_idle: null,
       runner_a_run1: null,
@@ -88,7 +92,7 @@
       crescent: null,
       goal: null,
       handoff_zone: null,
-      background: null
+      background: 'assets/hardy_pixel_relay_scene.png'
     };
     const IMAGES = {};
     let spritesLoaded = false;
@@ -235,6 +239,9 @@
     function drawBackground() {
       if (IMAGES.background) {
         ctx.drawImage(IMAGES.background, 0, 0, W, H);
+        // tint the scene so platforms and runners remain readable
+        ctx.fillStyle = 'rgba(5, 5, 10, 0.55)';
+        ctx.fillRect(0, 0, W, H);
         return;
       }
       ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, W, H);
