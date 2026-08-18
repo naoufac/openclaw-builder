@@ -197,11 +197,35 @@
     }
 
     const loadedSprites = {};
+    // Drop-day guard: only real art (right frame dims, visibly non-blank) may occupy a socket.
+    // Blank or mis-sized sheets are rejected so the vector fallback / baked placeholders keep the game playable.
+    const rejectedSheets = new Set();
+    function spriteSheetUsable(img, s) {
+      if (!img.naturalWidth || !img.naturalHeight) return false;
+      if (img.naturalWidth < s.frameW || img.naturalHeight < s.frameH) return false;
+      if (img.naturalWidth % s.frameW !== 0) return false;
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const x = c.getContext('2d');
+        x.drawImage(img, 0, 0);
+        const d = x.getImageData(0, 0, c.width, c.height).data;
+        let visible = 0;
+        for (let i = 3; i < d.length; i += 4) { if (d[i] > 8) { visible++; if (visible >= 8) return true; } }
+        return false;
+      } catch (e) { return true; } // unreadable canvas (taint): trust the load as before
+    }
     function loadSpriteSheet(key, url) {
       if (!url || loadedSprites[key]) return;
+      if (rejectedSheets.has(url)) return;
+      const s = SPRITE_SOCKETS[key];
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.src = url;
-      img.onload = () => { loadedSprites[key] = img; };
+      img.onload = () => {
+        if (spriteSheetUsable(img, s)) loadedSprites[key] = img;
+        else { delete loadedSprites[key]; rejectedSheets.add(url); }
+      };
       img.onerror = () => { delete loadedSprites[key]; };
     }
     function loadAllSprites() {
