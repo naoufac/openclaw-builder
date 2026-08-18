@@ -1,5 +1,16 @@
 # Pixel Relay / Croissant Nation Changelog
 
+## 2026-08-18 — relay-chain hotfix: handoff reachable, crash killed, spawn fixed
+Three compounding defects, all found by driving the real game with a scripted keyboard in headless Chromium:
+
+1. **Solo control guard made the relay impossible.** Every update frame forced control back to the baton carrier unless BOTH bakers already stood inside the handoff arch — but Baker B spawns far away and could never be walked there, so the H handoff (and everything behind it: crescent, care bonus, hearth rekindle, crumb crown) was unreachable. The help panel's promise ("Use Space to switch control between bakers") was false. Fix: guard removed; Space now freely switches bakers, and `tryToggleRunner` still refuses toggling while both stand in the arch so the H handoff stays deliberate. Verified: pristine build holds Baker B pinned (cluster x=644 → 644 after 3 s of input); fixed build lets B walk the full route.
+2. **`playCivicSeamBeat()` was never defined.** As soon as a handoff DID succeed, the civic seam activated (arch proximity + baked crumb trail) and the next 72 BPM beat boundary threw `ReferenceError` inside `update()` — the rAF loop died and the game froze ~200 ms after every handoff. Dormant only because defect 1 made handoffs impossible. Fix: call site is now a no-op; the seam pulse stays visual.
+3. **Baker A spawned sunk 24 px into the start shelf** (`y=300` = shelf top, not standing height), got shoved sideways out of it, and fell to the floor — where the first shelf is exactly 5 px out of max-jump reach, so every run started with an unplanned detour (and the under-shelf ceiling blocks the direct re-mount). Fix: spawn `y=276` = standing on the shelf.
+
+Also added an inert `?probe=1` hook (exposes runner state + two helpers for automated tests only; zero effect in normal play).
+
+**End-to-end verification (headless Chromium, scripted keyboard, no state tampering):** A climbs shelf → shelf → hearth arch; Space toggles to B; B crosses both shelves and the drop into the arch; H swaps the baton (`s1=idle, s2=baton`); care bonus 100 posts; crescent spawns (302 gold px sampled); timer keeps ticking 5+ s after handoff (no freeze); zero page errors. Full run: `/root/.openclaw/workspace-builder/probe-shots/relay-keyboard-handoff.png`.
+
 ## 2026-08-18 — sprite-socket drop guard
 - `loadSpriteSheet` now validates every sheet before it may occupy a socket: frame dims (≥ frameW×frameH, width a multiple of frameW) and ≥ 8 visible pixels — rejects blank or mis-sized files that decode fine but render as nothing.
 - Rejected URLs are cached per page-load (no per-frame refetch churn); network errors still retry.

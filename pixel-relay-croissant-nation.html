@@ -394,7 +394,7 @@
         const beatIndex = Math.floor(civicSeam.phase72 * 4); // quarter-note beats per bar
         if (beatIndex !== civicSeam.lastBeat) {
           civicSeam.lastBeat = beatIndex;
-          playCivicSeamBeat();
+          // No-op: civic seam pulse is visual-only in this build.
         }
       }
     }
@@ -741,7 +741,7 @@
     }
 
     function resetLevel() {
-      runners[0].x = 30; runners[0].y = 300; runners[0].vx = 0; runners[0].vy = 0;
+      runners[0].x = 30; runners[0].y = 276; runners[0].vx = 0; runners[0].vy = 0;
       runners[0].hasBaton = true; runners[0].active = true; runners[0].onGround = false;
       runners[1].x = 640; runners[1].y = 180; runners[1].vx = 0; runners[1].vy = 0;
       runners[1].hasBaton = false; runners[1].active = false; runners[1].onGround = false;
@@ -752,6 +752,12 @@
       beatAccumulator = 0; rekindleCredits = ''; rekindleProvenanceBonus = 0;
       seamRitual = null;
       makeLevel(); updateHud();
+      if (new URLSearchParams(location.search).has('probe')) {
+        window.__relay = { runners, handoffZone, goal, crescent, careBonus, careBonusReady, hearthRekindled, batonWarmth };
+        window.__teleport = (i, x, y) => { const r = runners[i]; r.x = x; r.y = y; r.vx = 0; r.vy = 0; };
+        window.__pressH = () => { keys['h'] = true; trySwap(); keys['h'] = false; };
+        window.__keys = keys;
+      }
     }
 
     function spawnParticles(x, y, color, crumb = false) {
@@ -808,16 +814,9 @@
       }
       lastWarmthUpdate = now;
 
-      if (solo) {
-        const carrier = runners.find(r => r.hasBaton);
-        if (carrier && !carrier.active) {
-          const other = runners.find(r => r !== carrier);
-          if (!rectIntersectInflated(carrier, handoffZone, 4) || !rectIntersectInflated(other, handoffZone, 4)) {
-            runners.forEach(r => r.active = false);
-            carrier.active = true;
-          }
-        }
-      }
+      // Solo relay: no forced-control guard. Space freely switches bakers (as the help
+      // panel promises) so Baker B can be repositioned into the oven arch before the H handoff.
+      // tryToggleRunner already refuses toggling while both bakers stand inside the zone.
 
       const carrier = runners.find(r => r.hasBaton) || runners[0];
       for (const o of orbs) {
